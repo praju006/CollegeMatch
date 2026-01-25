@@ -324,6 +324,34 @@ export const colleges: College[] = [
     website: 'https://christuniversity.in',
     accreditation: ['NAAC A++', 'UGC', 'AICTE']
   }
+   {
+    id: 'sjrc',
+    name: 'Sree Jagdguru Renukacharya College Of Arts,Comerce and Science',
+    shortName: 'SJRC',
+    type: 'Government',
+    affiliation: 'Bengaluru City University',
+    location: 'Anand Rao Circle, Bangalore',
+    established: 1945,
+    rating: 4.9,
+    ranking: 208,
+    courses: [
+      { id: 'bca', name: 'B.Computer Application', duration: '4 years', fees: 50000, cutoffMarks: 95, seats: 120 },
+      { id: 'bcom', name: 'B.Commerce', duration: '4 years', fees: 50000, cutoffMarks: 93, seats: 100 },
+      { id: 'bba', name: 'B.Business Administration', duration: '2 years', fees: 35000, cutoffMarks: 85, seats: 60, specializations: ['Machine Learning', 'Deep Learning', 'NLP'] },
+      { id: 'bsc', name: 'B.Science', duration: '2 years', fees: 35000, cutoffMarks: 82, seats: 50 },
+    ],
+    placements: {
+      averagePackage: 25,
+      highestPackage: 80,
+      placementRate: 98,
+      topRecruiters: ['Google', 'Microsoft', 'Amazon', 'Goldman Sachs', 'Adobe', 'Intel']
+    },
+    facilities: ['Research Labs', 'Library', 'Sports Complex', 'Hostels', 'Cafeteria', 'Innovation Hub'],
+    imageUrl: '/sjrc.jpg',
+    description: 'The Indian Institute of Science is a premier research institution and one of the oldest in India. Known for cutting-edge research and world-class faculty.',
+    website: 'https://iisc.ac.in',
+    accreditation: ['NAAC A++', 'NBA', 'UGC']
+  },
 ];
 
 export const courseCategories = [
