@@ -33,7 +33,7 @@ export interface RecommendationResult {
 
 export interface ScoreBreakdown {
   eligibilityScore: number;
-  placementScore: number;
+  placementcore: number;
   ratingScore: number;
   affordabilityScore: number;
   courseMatchScore: number;
@@ -84,12 +84,12 @@ function calculateEligibilityScore(studentMarks: number, courseCutoff: number): 
  * Calculate placement score based on average package and placement rate
  * Normalized to 0-100 scale
  */
-function calculatePlacementScore(placements: College['placements']): number {
+function calculateplacementcore(placement: College['placement']): number {
   // Normalize average package (assuming max is 30 LPA for scaling)
-  const packageScore = Math.min((placements.averagePackage / 30) * 100, 100);
+  const packageScore = Math.min((placement.averagePackage / 30) * 100, 100);
   
   // Placement rate is already a percentage
-  const rateScore = placements.placementRate;
+  const rateScore = placement.placementRate;
   
   // Weighted combination (60% package, 40% rate)
   return packageScore * 0.6 + rateScore * 0.4;
@@ -166,10 +166,10 @@ function generateExplanation(
   }
   
   // Placement explanation
-  if (breakdown.placementScore >= 80) {
-    explanations.push(`🎯 Excellent placements: ${college.placements.averagePackage} LPA average with ${college.placements.placementRate}% placement rate`);
-  } else if (breakdown.placementScore >= 60) {
-    explanations.push(`📊 Good placement record: ${college.placements.averagePackage} LPA average package`);
+  if (breakdown.placementcore >= 80) {
+    explanations.push(`🎯 Excellent placement: ${college.placement.averagePackage} LPA average with ${college.placement.placementRate}% placement rate`);
+  } else if (breakdown.placementcore >= 60) {
+    explanations.push(`📊 Good placement record: ${college.placement.averagePackage} LPA average package`);
   }
   
   // Rating explanation
@@ -187,8 +187,8 @@ function generateExplanation(
   }
   
   // Top recruiters
-  if (college.placements.topRecruiters.length > 0) {
-    explanations.push(`🏢 Top recruiters: ${college.placements.topRecruiters.slice(0, 3).join(', ')}`);
+  if (college.placement.topRecruiters.length > 0) {
+    explanations.push(`🏢 Top recruiters: ${college.placement.topRecruiters.slice(0, 3).join(', ')}`);
   }
   
   return explanations;
@@ -236,14 +236,14 @@ export function getRecommendations(
     });
     
     const eligibilityScore = calculateEligibilityScore(profile.marks, bestCourse.cutoffMarks);
-    const placementScore = calculatePlacementScore(college.placements);
+    const placementcore = calculateplacementcore(college.placement);
     const ratingScore = calculateRatingScore(college.rating);
     const affordabilityScore = calculateAffordabilityScore(bestCourse.fees, profile.budgetMax);
     const courseMatchScore = calculateCourseMatchScore(bestCourse.name, profile.preferredCourse);
     
     const breakdown: ScoreBreakdown = {
       eligibilityScore,
-      placementScore,
+      placementcore,
       ratingScore,
       affordabilityScore,
       courseMatchScore
@@ -252,7 +252,7 @@ export function getRecommendations(
     // Calculate weighted total score
     const totalScore = 
       eligibilityScore * weights.eligibility +
-      placementScore * weights.placement +
+      placementcore * weights.placement +
       ratingScore * weights.rating +
       affordabilityScore * weights.affordability +
       courseMatchScore * weights.courseMatch;
@@ -295,7 +295,7 @@ export function getRecommendationStats(results: RecommendationResult[]) {
     marginalCount: marginal.length,
     topScore: results[0]?.totalScore || 0,
     avgPlacement: results.length > 0 
-      ? results.reduce((sum, r) => sum + r.college.placements.averagePackage, 0) / results.length 
+      ? results.reduce((sum, r) => sum + r.college.placement.averagePackage, 0) / results.length 
       : 0
   };
 }

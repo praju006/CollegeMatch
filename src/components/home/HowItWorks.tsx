@@ -5,7 +5,7 @@ const steps = [
     step: '01',
     icon: ClipboardList,
     title: 'Enter Your Profile',
-    description: 'Input your academic marks, preferred course, budget, and priorities like placements or ratings.'
+    description: 'Input your academic marks, preferred course, budget, and priorities like placement or ratings.'
   },
   {
     step: '02',

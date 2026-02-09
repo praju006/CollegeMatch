@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { colleges, getUniqueCourses } from '@/data/colleges';
+import  colleges from '@/data/colleges';
 import { getRecommendations, getRecommendationStats, StudentProfile, RecommendationResult } from '@/lib/recommendation';
 import { cn } from '@/lib/utils';
 
@@ -33,7 +33,14 @@ const Recommend = () => {
   });
   const [results, setResults] = useState<RecommendationResult[]>([]);
 
-  const uniqueCourses = getUniqueCourses();
+ const uniqueCourses = Array.from(
+  new Set(
+    colleges.flatMap((c: any) =>
+      (c.courses ?? []).map((course: any) => course.name)
+    )
+  )
+);
+
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,7 +218,7 @@ function RecommendationForm({ profile, setProfile, onSubmit, uniqueCourses }: Fo
                   <div className="flex items-center justify-between rounded-lg border border-border p-4">
                     <div>
                       <Label htmlFor="placement-priority" className="text-base font-medium">
-                        Prioritize Placements
+                        Prioritize placement
                       </Label>
                       <p className="mt-1 text-sm text-muted-foreground">
                         Give more weight to placement statistics in recommendations
@@ -382,7 +389,7 @@ function RecommendationCard({ result, rank }: { result: RecommendationResult; ra
                   <StatusIcon className={cn("h-5 w-5", statusColor)} />
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {matchingCourses[0]?.name} • {college.location}
+                  {matchingCourses[0]?.name} • {college.city}
                 </p>
               </div>
 
@@ -400,7 +407,7 @@ function RecommendationCard({ result, rank }: { result: RecommendationResult; ra
                   <p className="text-xs text-muted-foreground">Rating</p>
                 </div>
                 <div className="text-center">
-                  <p className="font-medium text-foreground">₹{college.placements.averagePackage}L</p>
+                  <p className="font-medium text-foreground">₹{college.placement.averagePackage}L</p>
                   <p className="text-xs text-muted-foreground">Avg Package</p>
                 </div>
                 <ChevronDown className={cn(
@@ -420,7 +427,7 @@ function RecommendationCard({ result, rank }: { result: RecommendationResult; ra
                 <h4 className="mb-4 font-medium text-foreground">Score Breakdown</h4>
                 <div className="space-y-3">
                   <ScoreBar label="Eligibility" score={breakdown.eligibilityScore} />
-                  <ScoreBar label="Placements" score={breakdown.placementScore} />
+                  <ScoreBar label="placement" score={breakdown.placementcore} />
                   <ScoreBar label="Rating" score={breakdown.ratingScore} />
                   <ScoreBar label="Affordability" score={breakdown.affordabilityScore} />
                   <ScoreBar label="Course Match" score={breakdown.courseMatchScore} />

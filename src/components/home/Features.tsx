@@ -9,7 +9,7 @@ const features = [
   {
     icon: Filter,
     title: 'Smart Filters',
-    description: 'Filter by fees, placements, courses, and ratings to narrow down your perfect college match.'
+    description: 'Filter by fees, placement, courses, and ratings to narrow down your perfect college match.'
   },
   {
     icon: BarChart3,

@@ -34,7 +34,7 @@ export function CTASection() {
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="w-full border-primary-foreground/20 text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto">
+              <Button asChild size="lg" variant="outline" className="w-full bg-transparent border  border-white/40 text-white hover:bg-green-500/10 sm:w-auto">
                 <Link to="/colleges">Explore Colleges</Link>
               </Button>
             </div>

@@ -47,7 +47,7 @@ Key innovations include:
 
 4. **Placement Opacity**: Reliable, comparable placement data is scattered across multiple sources and often outdated.
 
-5. **Decision Paralysis**: Without a structured way to compare colleges across multiple dimensions (fees, placements, rating, location), students struggle to make informed decisions.
+5. **Decision Paralysis**: Without a structured way to compare colleges across multiple dimensions (fees, placement, rating, city), students struggle to make informed decisions.
 
 ### Solution
 
@@ -74,7 +74,7 @@ This platform addresses these challenges by:
 
 ### Secondary Objectives
 
-1. Enable **multi-criteria filtering** (fees, placements, ratings, courses) for manual exploration.
+1. Enable **multi-criteria filtering** (fees, placement, ratings, courses) for manual exploration.
 
 2. Design a **scalable architecture** that can be upgraded to use machine learning models in the future.
 
@@ -152,7 +152,7 @@ App.tsx
 │   ├── CollegeDetail (Detail Page)
 │   │   ├── CollegeHero
 │   │   ├── CoursesList
-│   │   ├── PlacementStats
+│   │   ├── placementtats
 │   │   └── Sidebar
 │   └── Recommend (Recommendation Engine)
 │       ├── StudentProfileForm
@@ -216,7 +216,7 @@ App.tsx
 │ shortName       │       │ name            │   │
 │ type            │       │ duration        │   │
 │ affiliation     │       │ fees            │   │
-│ location        │       │ cutoffMarks     │   │
+│ city        │       │ cutoffMarks     │   │
 │ established     │       │ seats           │   │
 │ rating          │       │ specializations │   │
 │ ranking         │◄──────│                 │   │
@@ -225,7 +225,7 @@ App.tsx
 │ imageUrl        │                             │
 ├─────────────────┤                             │
 │ EMBEDDED:       │       ┌─────────────────┐   │
-│ placements{}    │       │  SPECIALIZATION │   │
+│ placement{}    │       │  SPECIALIZATION │   │
 │ facilities[]    │       ├─────────────────┤   │
 │ accreditation[] │       │ id (PK)         │   │
 └─────────────────┘       │ course_id (FK)  │◄──┘
@@ -258,7 +258,7 @@ interface Course {
   specializations?: string[];
 }
 
-interface PlacementStats {
+interface placementtats {
   averagePackage: number;   // LPA
   highestPackage: number;   // LPA
   placementRate: number;    // Percentage
@@ -271,17 +271,17 @@ interface College {
   shortName: string;
   type: 'Government' | 'Private' | 'Deemed';
   affiliation: string;
-  location: string;
+  city: string;
   established: number;
   rating: number;           // Out of 5
   ranking: number;          // NIRF ranking
   courses: Course[];
-  placements: PlacementStats;
+  placement: placementtats;
   facilities: string[];
   imageUrl: string;
   description: string;
   website: string;
-  accreditation: string[];
+  approvedBy: string[];
 }
 ```
 
@@ -295,7 +295,7 @@ CREATE TABLE colleges (
   short_name VARCHAR(50),
   type VARCHAR(20) CHECK (type IN ('Government', 'Private', 'Deemed')),
   affiliation VARCHAR(100),
-  location VARCHAR(200),
+  city VARCHAR(200),
   established INTEGER,
   rating DECIMAL(2,1),
   ranking INTEGER,
@@ -399,12 +399,12 @@ function calculateEligibilityScore(studentMarks: number, courseCutoff: number): 
 #### 2. Placement Score (0-100)
 
 ```typescript
-function calculatePlacementScore(placements: PlacementStats): number {
+function calculateplacementcore(placement: placementtats): number {
   // Normalize average package (assuming 30 LPA as max benchmark)
-  const packageScore = Math.min((placements.averagePackage / 30) * 100, 100);
+  const packageScore = Math.min((placement.averagePackage / 30) * 100, 100);
   
   // Placement rate is already percentage
-  const rateScore = placements.placementRate;
+  const rateScore = placement.placementRate;
   
   // Weighted combination (60% package importance, 40% rate)
   return packageScore * 0.6 + rateScore * 0.4;
@@ -494,8 +494,8 @@ function generateExplanation(college, matchingCourses, breakdown, profile): stri
   }
   
   // Placement explanation
-  if (breakdown.placementScore >= 80) {
-    explanations.push(`🎯 Excellent placements: ${avgPackage} LPA with ${rate}% placement rate`);
+  if (breakdown.placementcore >= 80) {
+    explanations.push(`🎯 Excellent placement: ${avgPackage} LPA with ${rate}% placement rate`);
   }
   
   // Rating explanation
@@ -515,11 +515,11 @@ function generateExplanation(college, matchingCourses, breakdown, profile): stri
 - Marks: 85%
 - Preferred Course: Computer Science
 - Budget: ₹2.5L/year
-- Priority: Placements
+- Priority: placement
 
 **Sample College**: RV College of Engineering
 - B.Tech CS: Cutoff 88%, Fees ₹2.5L
-- Placements: ₹12L avg, 92% rate
+- placement: ₹12L avg, 92% rate
 - Rating: 4.5/5
 
 **Score Calculation**:
@@ -622,7 +622,7 @@ Response:
       "totalScore": 78.5,
       "breakdown": {
         "eligibilityScore": 90,
-        "placementScore": 85,
+        "placementcore": 85,
         "ratingScore": 88,
         "affordabilityScore": 70,
         "courseMatchScore": 100
@@ -630,7 +630,7 @@ Response:
       "eligibilityStatus": "eligible",
       "explanation": [
         "✅ Your marks (85%) exceed the cutoff (80%) by 5 points",
-        "🎯 Excellent placements: 12 LPA average with 92% placement rate"
+        "🎯 Excellent placement: 12 LPA average with 92% placement rate"
       ]
     }
   ]
@@ -662,7 +662,7 @@ Response:
 │      FORM           │                │                         │
 │                     │                │  [Search Bar]           │
 │  Academic Profile:  │                │  [Filters: Type, Fees,  │
-│  - Marks (slider)   │                │   Placements, Course]   │
+│  - Marks (slider)   │                │   placement, Course]   │
 │  - Preferred Course │                │                         │
 │                     │                │  ┌─────┐ ┌─────┐ ┌─────┐│
 │  Budget & Prefs:    │                │  │Card │ │Card │ │Card ││
@@ -670,12 +670,12 @@ Response:
 │  - College Type     │                │     │       │       │   │
 │                     │                │     └───────┴───────┘   │
 │  Priorities:        │                │            │             │
-│  - [x] Placements   │                │            ▼             │
+│  - [x] placement   │                │            ▼             │
 │  - [ ] Ratings      │                │  ┌─────────────────────┐│
 │                     │                │  │   COLLEGE DETAIL    ││
 │  [Get Recommendations]               │  │   - About           ││
 └──────────┬──────────┘                │  │   - Courses List    ││
-           │                           │  │   - Placements      ││
+           │                           │  │   - placement      ││
            ▼                           │  │   - Quick Facts     ││
 ┌─────────────────────────┐            │  │                     ││
 │   RECOMMENDATION        │            │  │  [Get Recommendation]│
@@ -858,7 +858,7 @@ project-root/
 5. **Lower complexity**: Simpler to implement, debug, and maintain
 6. **Upgrade path**: Architecture allows ML integration later
 
-The scoring formula mimics how students actually make decisions - considering eligibility, placements, ratings, and budget in weighted combination.
+The scoring formula mimics how students actually make decisions - considering eligibility, placement, ratings, and budget in weighted combination.
 
 ---
 
@@ -870,7 +870,7 @@ The scoring formula mimics how students actually make decisions - considering el
 2. **Filtering**: Colleges without matching courses are excluded
 3. **Scoring**: Each college-course pair is scored on 5 dimensions:
    - Eligibility (marks vs cutoff)
-   - Placements (package + rate)
+   - placement (package + rate)
    - Rating (college reputation)
    - Affordability (fees vs budget)
    - Course Match (preference alignment)
@@ -890,7 +890,7 @@ The scoring formula mimics how students actually make decisions - considering el
 4. **Scalability**: Essential for growing codebases
 5. **Industry Standard**: Most companies use TypeScript for production React
 
-Example benefit: The `College` interface ensures all college data has required fields like `placements` and `courses`, preventing undefined errors.
+Example benefit: The `College` interface ensures all college data has required fields like `placement` and `courses`, preventing undefined errors.
 
 ---
 
@@ -934,12 +934,12 @@ Future additions would include:
    - Views filterable college listing
    - Uses search, type filters, fee sliders
    - Clicks college card to see details
-   - Explores courses, placements, facilities
+   - Explores courses, placement, facilities
 3. **Option B - Recommend**: User clicks "Get Recommendations"
    - Enters marks percentage
    - Selects preferred course
    - Sets budget limit
-   - Optionally prioritizes placements or ratings
+   - Optionally prioritizes placement or ratings
    - Submits form
    - Views ranked recommendations with scores
    - Expands cards to see breakdown and explanations
