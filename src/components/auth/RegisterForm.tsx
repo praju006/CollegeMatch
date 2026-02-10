@@ -15,15 +15,33 @@ export function RegisterForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
+    setError("");
 
     try {
-      await registerUser({ name, email, password });
-      switchToLogin();
+      const data = await registerUser({ name, email, password });
+
+      // AUTO LOGIN AFTER REGISTER
+      if (data?.token && data?.user) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        // notify header
+        window.dispatchEvent(new Event("storage"));
+
+        onClose(); // close modal
+      } else {
+        // fallback → go to login screen
+        switchToLogin();
+      }
     } catch {
       setError("Registration failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -41,7 +59,9 @@ export function RegisterForm({
       <form onSubmit={handleRegister} className="space-y-4">
         <h2 className="text-xl font-bold text-center">Register</h2>
 
-        {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+        {error && (
+          <p className="text-sm text-red-500 text-center">{error}</p>
+        )}
 
         <Input
           placeholder="Name"
@@ -63,19 +83,29 @@ export function RegisterForm({
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <Button type="submit" className="w-full">
-          Register
+        <Button type="submit" className="w-full" disabled={loading}>
+          {loading ? "Creating..." : "Register"}
         </Button>
 
-        {/* OR DIVIDER */}
+        {/* OR */}
         <p className="text-center text-sm text-gray-500">OR</p>
 
         {/* GOOGLE LOGIN */}
         <div className="flex justify-center">
           <GoogleLogin
             onSuccess={(credentialResponse) => {
-              console.log("Google Success:", credentialResponse);
-              onClose(); // close modal after success
+              // usually send credential to backend
+              const fakeUser = {
+                name: "Google User",
+                email: "google@email.com",
+              };
+
+              localStorage.setItem("token", "google_token");
+              localStorage.setItem("user", JSON.stringify(fakeUser));
+
+              window.dispatchEvent(new Event("storage"));
+
+              onClose();
             }}
             onError={() => {
               console.log("Google Register Failed");

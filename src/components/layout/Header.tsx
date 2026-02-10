@@ -6,7 +6,15 @@ import { AuthModal } from "@/components/auth/AuthModal";
 export function Header() {
   const [authOpen, setAuthOpen] = useState(false);
 
-  const user = localStorage.getItem("user");
+  const isLoggedIn = !!localStorage.getItem("token");
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    // force small rerender
+    window.location.href = "/";
+  };
 
   return (
     <>
@@ -19,14 +27,8 @@ export function Header() {
           <div className="flex gap-4 items-center">
             <Link to="/colleges">Colleges</Link>
 
-            {user ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  localStorage.clear();
-                  window.location.reload();
-                }}
-              >
+            {isLoggedIn ? (
+              <Button variant="outline" onClick={handleLogout}>
                 Logout
               </Button>
             ) : (
@@ -38,7 +40,6 @@ export function Header() {
         </div>
       </header>
 
-      {/* ✅ AUTH MODAL */}
       <AuthModal open={authOpen} onClose={() => setAuthOpen(false)} />
     </>
   );
