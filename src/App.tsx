@@ -5,7 +5,7 @@ import Colleges from "./pages/Colleges";
 import CollegeDetail from "./pages/CollegeDetail";
 import Recommend from "./pages/Recommend";
 import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
+import Login from "./pages/login";   // CAPITAL variable
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 
@@ -19,7 +19,7 @@ export default function App() {
       <Route path="/profile" element={<Profile />} />
       <Route path="/recommend" element={<Recommend />} />
 
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Login />} />   {/* CAPITAL */}
       <Route path="/register" element={<Register />} />
 
       <Route path="*" element={<NotFound />} />
