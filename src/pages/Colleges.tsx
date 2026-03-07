@@ -84,7 +84,7 @@ const Colleges = () => {
     }
 
     try {
-      const res = await fetch("http://localhost:5000/api/profile/save", {
+      const res = await fetch("https://collegematch-production.up.railway.app/api/profile/save", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

@@ -1,4 +1,4 @@
-const API = "http://localhost:5000/api/auth";
+const API = "https://collegematch-production.up.railway.app/api/auth";
 
 export async function loginUser(data: { email: string; password: string }) {
   const res = await fetch(`${API}/login`, {
