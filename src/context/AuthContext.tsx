@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
-
 type UserType = {
+  id?: string;
   _id?: string;
   email: string;
   name?: string;
@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = (userData: UserType, token: string) => {
     localStorage.setItem("token", token);
     localStorage.setItem("user", JSON.stringify(userData));
-    localStorage.setItem("userId", userData._id ?? ""); // ✅ save userId
+localStorage.setItem("userId", userData._id ?? userData.id ?? "");
     setUser(userData);
   };
 
