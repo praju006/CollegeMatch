@@ -1,4 +1,4 @@
-const API_BASE = "https://collegematch-production.up.railway.app/api";
+const API_BASE = "http://localhost:5000/api";
 
 export const getColleges = async () => {
   const res = await fetch(`${API_BASE}/colleges`);

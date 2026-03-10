@@ -41,7 +41,7 @@ export default function Profile() {
   const fetchProfile = useCallback(async () => {
     if (!userId || !token) return;
     try {
-      const res = await fetch(`https://collegematch-production.up.railway.app/api/profile/${userId}`, {
+      const res = await fetch(`http://localhost:5000/api/profile/${userId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = await res.json();
@@ -64,7 +64,7 @@ export default function Profile() {
 
   useEffect(() => {
     if (!userId || !token) return;
-    fetch(`https://collegematch-production.up.railway.app/api/profile/recommend/${userId}`, {
+    fetch(`http://localhost:5000/api/profile/recommend/${userId}`, {
       headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => res.json())
@@ -75,7 +75,7 @@ export default function Profile() {
   const savePreferences = async () => {
     setSavingPrefs(true);
     try {
-      await fetch(`https://collegematch-production.up.railway.app/api/profile/preferences`, {
+      await fetch(`http://localhost:5000/api/profile/preferences`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +99,7 @@ export default function Profile() {
 
   const removeCollege = async (collegeName: string) => {
     try {
-      await fetch("https://collegematch-production.up.railway.app/api/profile/remove", {
+      await fetch("http://localhost:5000/api/profile/remove", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
