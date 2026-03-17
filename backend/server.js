@@ -11,26 +11,36 @@ import profileRoutes from "./routes/profileRoutes.js";
 
 const app = express();
 
-// ✅ CORS and JSON must come FIRST before any routes
+// ✅ CORS — allow local dev + production
 app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:8080",
-    "https://collegematch.zestsketchpad.in"
+    "https://collegematch.zestsketchpad.in",
   ],
   credentials: true,
 }));
+
 app.use(express.json());
 
-// ✅ Routes after middleware
-app.use("/api/auth", authRoutes);
+// ✅ Health check — keeps Render free tier awake via UptimeRobot
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "CollegeMatch backend is running",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// ✅ Routes
+app.use("/api/auth",     authRoutes);
 app.use("/api/colleges", collegeRoutes);
-app.use("/api/profile", profileRoutes);
+app.use("/api/profile",  profileRoutes);
 
 // ✅ MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI)
-  .then(() => console.log("MongoDB connected 🚀"))
+  .then(() => console.log("MongoDB connected"))
   .catch(err => console.error("Mongo error:", err));
 
 const PORT = process.env.PORT || 5000;
