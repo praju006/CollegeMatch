@@ -16,16 +16,18 @@ export function LoginForm({
   onClose: () => void;
 }) {
   const { login } = useAuth();
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [error, setError]         = useState("");
+  const [loading, setLoading]     = useState(false);
+  const [loginFailed, setLoginFailed] = useState(false); // ← tracks if login failed
 
   // ─── Normal Login ──────────────────────────────────────────────
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
+    setLoginFailed(false);
     try {
       const data = await loginUser({ email, password });
       if (data?.token && data?.user) {
@@ -33,9 +35,11 @@ export function LoginForm({
         onClose();
       } else {
         setError("Invalid email or password");
+        setLoginFailed(true); // ← show forgot password link now
       }
     } catch {
       setError("Login failed. Please try again.");
+      setLoginFailed(true);
     } finally {
       setLoading(false);
     }
@@ -72,7 +76,21 @@ export function LoginForm({
     <form onSubmit={handleLogin} className="space-y-4">
       <h2 className="text-xl font-bold text-center">Login</h2>
 
-      {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+      {error && (
+        <div className="text-sm text-red-500 text-center space-y-1">
+          <p>{error}</p>
+          {/* ── only show forgot password after a failed login attempt ── */}
+          {loginFailed && (
+            <Link
+              to="/forgot-password"
+              onClick={onClose}
+              className="inline-block text-[#565699] font-semibold hover:underline text-xs mt-1"
+            >
+              Forgot your password? Reset it →
+            </Link>
+          )}
+        </div>
+      )}
 
       <Input
         placeholder="Email"
@@ -82,25 +100,13 @@ export function LoginForm({
         required
       />
 
-      <div className="space-y-1">
-        <Input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {/* ── Forgot password link ── */}
-        <div className="text-right">
-          <Link
-            to="/forgot-password"
-            className="text-xs text-[#565699] hover:underline font-medium"
-            onClick={onClose}
-          >
-            Forgot password?
-          </Link>
-        </div>
-      </div>
+      <Input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        required
+      />
 
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Logging in..." : "Login"}
