@@ -7,51 +7,49 @@ const userSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-
     email: {
       type: String,
       required: true,
       unique: true,
       lowercase: true,
+      trim: true,
     },
-
     password: {
       type: String,
-      required: true,
     },
-
-    role: {
+    googleId: {
       type: String,
-      enum: ["student", "admin"],
-      default: "student",
     },
 
-    preferredCourse: {
-      type: String,
-      default: "",
+    // saved colleges as name strings
+    savedColleges: {
+      type: [String],
+      default: [],
     },
 
+    // user preferences
     preferredCity: {
       type: String,
       default: "",
     },
-
+    preferredCourse: {
+      type: String,
+      default: "",
+    },
     budgetRange: {
       type: Number,
       default: 0,
     },
 
-    savedColleges: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "College",
-      },
-    ],
+    // ── password reset fields ──
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
+      type: Date,
+    },
   },
-  {
-    timestamps: true,
-  }
+  { timestamps: true }
 );
 
-const User = mongoose.model("User", userSchema);
-export default User;
+export default mongoose.model("User", userSchema);

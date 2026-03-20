@@ -2,114 +2,93 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { forgotPassword, resetPassword } from "../controllers/passwordResetController.js";
 
 const router = express.Router();
 
-// ─── REGISTER ────────────────────────────────────────────────────────────────
+// ── REGISTER ──
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "All fields are required" });
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
-    }
+    const exists = await User.findOne({ email: email.toLowerCase() });
+    if (exists)
+      return res.status(400).json({ message: "Email already registered" });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword });
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(password, salt);
 
-    // ✅ Return token immediately so user is logged in right after register
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const user = await User.create({ name, email: email.toLowerCase(), password: hashed });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
     res.status(201).json({
-      message: "User registered successfully",
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── LOGIN ────────────────────────────────────────────────────────────────────
+// ── LOGIN ──
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ message: "All fields are required" });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    const user = await User.findOne({ email: email.toLowerCase() });
+    if (!user)
+      return res.status(400).json({ message: "Invalid email or password" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match)
+      return res.status(400).json({ message: "Invalid email or password" });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({
-      message: "Login successful",
+    res.status(200).json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
-// ─── GOOGLE LOGIN/REGISTER ────────────────────────────────────────────────────
-// ✅ Finds existing user by email OR creates new one, returns real token + id
+// ── GOOGLE AUTH ──
 router.post("/google", async (req, res) => {
   try {
-    const { name, email } = req.body;
-    if (!name || !email) {
-      return res.status(400).json({ message: "Missing Google user data" });
-    }
+    const { name, email, googleId } = req.body;
+    if (!email) return res.status(400).json({ message: "Email required" });
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: email.toLowerCase() });
     if (!user) {
-      // Create new user with random password (they'll use Google to login)
-      const randomPassword = await bcrypt.hash(
-        Math.random().toString(36) + Date.now().toString(),
-        10
-      );
-      user = await User.create({ name, email, password: randomPassword });
+      user = await User.create({
+        name,
+        email: email.toLowerCase(),
+        googleId,
+      });
     }
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: "7d" });
 
-    res.json({
-      message: "Google login successful",
+    res.status(200).json({
       token,
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
+      user: { id: user._id, name: user.name, email: user.email },
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error", error: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
+
+// ── FORGOT PASSWORD ──
+router.post("/forgot-password", forgotPassword);
+
+// ── RESET PASSWORD ──
+router.post("/reset-password/:token", resetPassword);
 
 export default router;
