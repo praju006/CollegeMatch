@@ -76,21 +76,6 @@ export function LoginForm({
     <form onSubmit={handleLogin} className="space-y-4">
       <h2 className="text-xl font-bold text-center">Login</h2>
 
-      {error && (
-        <div className="text-sm text-red-500 text-center space-y-1">
-          <p>{error}</p>
-          {/* ── only show forgot password after a failed login attempt ── */}
-          {loginFailed && (
-            <Link
-              to="/forgot-password"
-              onClick={onClose}
-              className="inline-block text-[#565699] font-semibold hover:underline text-xs mt-1"
-            >
-              Forgot your password? Reset it →
-            </Link>
-          )}
-        </div>
-      )}
 
       <Input
         placeholder="Email"
@@ -108,6 +93,22 @@ export function LoginForm({
         required
       />
 
+      {error && (
+        <div className="text-sm text-red-500 text-center space-y-1">
+          <p>{error}</p>
+          {/* ── only show forgot password after a failed login attempt ── */}
+          {loginFailed && (
+            <Link
+              to="/forgot-password"
+              onClick={onClose}
+              className="inline-block text-[#565699] font-semibold hover:underline text-xs mt-1"
+            >
+              Forgot your password?
+            </Link>
+          )}
+        </div>
+      )}
+
       <Button type="submit" className="w-full" disabled={loading}>
         {loading ? "Logging in..." : "Login"}
       </Button>
@@ -120,6 +121,8 @@ export function LoginForm({
           onError={() => setError("Google login failed.")}
         />
       </div>
+
+
 
       <p className="text-center text-sm">
         No account?{" "}
