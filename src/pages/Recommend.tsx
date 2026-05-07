@@ -1,499 +1,418 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
-import colleges from "@/data/colleges";
-import type { College } from "@/data/colleges";
+import { useState } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  GraduationCap, ArrowRight, ArrowLeft, Sparkles,
+  TrendingUp, Star, IndianRupee, CheckCircle2, AlertTriangle,
+  XCircle, ChevronDown, MapPin, ExternalLink
+} from 'lucide-react';
+import { Header } from '@/components/layout/Header';
+import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import colleges from '@/data/colleges';
+import { getRecommendations, getRecommendationStats, StudentProfile, RecommendationResult } from '@/lib/recommendation';
 
-// ─── types ──────────────────────────────────────────────────────────────────
-type CollegeType = "Any" | "Government" | "Private" | "Deemed";
-type Priority = "placement" | "rating";
+const DISPLAY = "'Bricolage Grotesque', sans-serif";
+const BODY    = "'DM Sans', sans-serif";
+const MONO    = "'JetBrains Mono', monospace";
 
-interface FormState {
-  marks: number;
-  course: string;
-  budget: number;        // in lakhs
-  collegeType: CollegeType;
-  priorities: Priority[];
-}
-
-// ─── constants ──────────────────────────────────────────────────────────────
-const COURSES = [
-  "Computer Science",
-  "Artificial Intelligence",
-  "Data Science",
-  "Information Science",
-  "Electronics & Communication",
-  "Electrical Engineering",
-  "Mechanical Engineering",
-  "Civil Engineering",
-  "MBA",
-  "BBA",
-  "BCA",
-  "B.Com",
-  "MCA",
+const INDIA_CITIES = [
+  "Any City","Bangalore","Mumbai","Pune","New Delhi","Noida","Chennai",
+  "Hyderabad","Kochi","Kolkata","Ahmedabad","Jaipur","Bhopal","Indore",
+  "Lucknow","Chandigarh","Mysore","Mangalore","Coimbatore","Visakhapatnam",
+  "Bhubaneswar","Guwahati","Patna","Ranchi","Surat","Vadodara","Nagpur",
 ];
 
-// ─── recommendation engine ───────────────────────────────────────────────────
-function getRecommendations(form: FormState): College[] {
-  const budgetInRupees = form.budget * 100000;
-
-  const scored = colleges
-    .filter((c) => {
-      // type filter
-      if (form.collegeType !== "Any" && c.type !== form.collegeType) return false;
-
-      // has a matching course
-      const hasCourse = c.courses.some((co) =>
-        co.name.toLowerCase().includes(form.course.toLowerCase().split(" ")[0])
-      );
-      if (!hasCourse) return false;
-
-      // budget: at least one course within budget
-      const affordable = c.courses.some((co) => co.fees <= budgetInRupees);
-      if (!affordable) return false;
-
-      // cutoff: student's marks must meet at least one course cutoff
-      const eligible = c.courses.some((co) => form.marks >= co.cutoffMarks);
-      if (!eligible) return false;
-
-      return true;
-    })
-    .map((c) => {
-      let score = 0;
-      if (form.priorities.includes("placement")) {
-        score += c.placement.averagePackage * 3;
-        score += c.placement.placementRate * 0.5;
-      }
-      if (form.priorities.includes("rating")) {
-        score += c.rating * 10;
-        score += (200 - c.ranking) * 0.1;
-      }
-      // base score if no priority selected
-      if (form.priorities.length === 0) {
-        score += c.rating * 10 + c.placement.averagePackage * 2;
-      }
-      return { college: c, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 8)
-    .map((x) => x.college);
-
-  return scored;
-}
-
-// ─── component ──────────────────────────────────────────────────────────────
-export default function Recommend() {
-  const navigate = useNavigate();
-
-  const [form, setForm] = useState<FormState>({
-    marks: 85,
-    course: "Computer Science",
-    budget: 4.5,
-    collegeType: "Any",
-    priorities: ["placement"],
-  });
-
-  const [results, setResults] = useState<College[] | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const togglePriority = (p: Priority) => {
-    setForm((prev) => ({
-      ...prev,
-      priorities: prev.priorities.includes(p)
-        ? prev.priorities.filter((x) => x !== p)
-        : [...prev.priorities, p],
-    }));
-  };
-
-  const handleSubmit = () => {
-    setLoading(true);
-    // slight delay for UX
-    setTimeout(() => {
-      const recs = getRecommendations(form);
-      setResults(recs);
-      setLoading(false);
-      // scroll to results
-      setTimeout(() => {
-        document.getElementById("results")?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
-    }, 800);
-  };
-
-  const typeColor: Record<string, string> = {
-    Government: "bg-emerald-100 text-emerald-700",
-    Private: "bg-violet-100 text-violet-700",
-    Deemed: "bg-amber-100 text-amber-700",
-  };
+function PillDropdown({ value, options, onChange, icon, searchable = false }: {
+  value: string; options: string[]; onChange: (v: string) => void;
+  icon?: React.ReactNode; searchable?: boolean;
+}) {
+  const [open, setOpen]     = useState(false);
+  const [search, setSearch] = useState('');
+  const filtered = searchable ? options.filter(o => o.toLowerCase().includes(search.toLowerCase())) : options;
 
   return (
-    <div
-      className="relative flex min-h-screen flex-col bg-[#f6f7f8] text-slate-900 antialiased"
-      style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-        .material-symbols-outlined { font-family:'Material Symbols Outlined'; font-weight:normal; font-style:normal; line-height:1; letter-spacing:normal; text-transform:none; display:inline-block; white-space:nowrap; direction:ltr; }
-        input[type='range']::-webkit-slider-thumb { -webkit-appearance:none; width:24px; height:24px; background:#0b2647; border:4px solid #fff; border-radius:50%; cursor:pointer; box-shadow:0 4px 6px -1px rgb(0 0 0/.1); }
-        input[type='range']::-moz-range-thumb { width:24px; height:24px; background:#0b2647; border:4px solid #fff; border-radius:50%; cursor:pointer; }
-        .card-in { animation: fadeUp 0.4s ease both; }
-        @keyframes fadeUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
-        .result-card { transition: transform 0.2s, box-shadow 0.2s; }
-        .result-card:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(11,38,71,0.12); }
-      `}</style>
-
-      <Header />
-
-      <main className="flex-1 flex flex-col items-center">
-
-        {/* ── HERO ── */}
-        <section className="w-full max-w-5xl px-6 pt-12 pb-8 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0b2647]/10 text-[#0b2647] text-xs font-bold uppercase tracking-wider mb-4">
-            <span className="material-symbols-outlined text-sm">magic_button</span>
-            AI-Powered Discovery
-          </div>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900 mb-4">
-            Find Your Perfect{" "}
-            <span className="text-[#0b2647]">College Match</span>
-          </h1>
-          <p className="text-lg text-slate-500 max-w-2xl mx-auto">
-            Tell us about your profile and preferences. Our algorithm scans{" "}
-            <span className="font-bold text-slate-700">{colleges.length}+ institutions</span>{" "}
-            to find the one where you'll thrive.
-          </p>
-        </section>
-
-        {/* ── FORM ── */}
-        <div className="w-full max-w-3xl px-6 pb-16 space-y-6">
-
-          {/* Section 1: Academic */}
-          <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-lg bg-blue-50 flex items-center justify-center text-[#0b2647]">
-                <span className="material-symbols-outlined">analytics</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Academic Performance</h3>
-                <p className="text-sm text-slate-500">Your current scores and target field</p>
-              </div>
+    <div className="relative">
+      <button type="button" onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm hover:border-[#565699] hover:bg-indigo-50/30 focus:outline-none focus:ring-2 focus:ring-[#565699] transition-all"
+        style={{ fontFamily: BODY }}>
+        <span className="flex items-center gap-2">{icon}<span className="truncate">{value}</span></span>
+        <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute top-full mt-1 left-0 z-50 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
+          {searchable && (
+            <div className="p-2 border-b">
+              <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)} autoFocus
+                className="w-full px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#565699]" />
             </div>
-            <div className="space-y-8">
-
-              {/* Marks slider */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <label className="text-sm font-semibold text-slate-700">Marks Percentage (%)</label>
-                  <span className="font-mono text-xl font-bold text-[#0b2647] bg-slate-100 px-3 py-1 rounded-lg">
-                    {form.marks}%
-                  </span>
-                </div>
-                <input
-                  type="range" min={40} max={100}
-                  value={form.marks}
-                  onChange={(e) => setForm((f) => ({ ...f, marks: +e.target.value }))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0b2647]"
-                />
-                <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest">
-                  <span>40%</span><span>70%</span><span>100%</span>
-                </div>
-              </div>
-
-              {/* Course */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Preferred Course</label>
-                <select
-                  value={form.course}
-                  onChange={(e) => setForm((f) => ({ ...f, course: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 focus:ring-2 focus:ring-[#0b2647] focus:border-transparent outline-none transition-all text-sm"
-                >
-                  {COURSES.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Budget */}
-          <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <span className="material-symbols-outlined">payments</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">Budget &amp; Preferences</h3>
-                <p className="text-sm text-slate-500">Financial boundaries and institution type</p>
-              </div>
-            </div>
-            <div className="space-y-8">
-
-              {/* Budget slider */}
-              <div>
-                <div className="flex justify-between items-center mb-4">
-                  <label className="text-sm font-semibold text-slate-700">Max Annual Budget</label>
-                  <span className="font-mono text-xl font-bold text-[#0b2647] bg-slate-100 px-3 py-1 rounded-lg">
-                    ₹ {form.budget}L
-                  </span>
-                </div>
-                <input
-                  type="range" min={0.5} max={40} step={0.5}
-                  value={form.budget}
-                  onChange={(e) => setForm((f) => ({ ...f, budget: +e.target.value }))}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-[#0b2647]"
-                />
-                <div className="flex justify-between mt-2 text-[10px] font-mono text-slate-400 uppercase tracking-widest">
-                  <span>₹0.5L</span><span>₹20L</span><span>₹40L+</span>
-                </div>
-              </div>
-
-              {/* College Type */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">College Type</label>
-                <div className="grid grid-cols-4 gap-3">
-                  {(["Any", "Government", "Private", "Deemed"] as CollegeType[]).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setForm((f) => ({ ...f, collegeType: t }))}
-                      className={`px-3 py-3 rounded-lg border-2 font-bold text-sm transition-all ${
-                        form.collegeType === t
-                          ? "border-[#0b2647] bg-[#0b2647]/5 text-[#0b2647]"
-                          : "border-slate-100 text-slate-500 hover:border-[#0b2647]/30"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Priorities */}
-          <div className="bg-white p-6 md:p-8 rounded-xl shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="size-10 rounded-lg bg-amber-50 flex items-center justify-center text-amber-600">
-                <span className="material-symbols-outlined">star</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-bold">What matters most?</h3>
-                <p className="text-sm text-slate-500">Pick your top decision drivers (can select both)</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Placement */}
-              <label
-                onClick={() => togglePriority("placement")}
-                className={`relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  form.priorities.includes("placement")
-                    ? "border-[#0b2647] bg-[#0b2647]/5"
-                    : "border-slate-100 hover:border-[#0b2647]/30"
-                }`}
-              >
-                <div className={`absolute top-4 right-4 size-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  form.priorities.includes("placement")
-                    ? "bg-[#0b2647] border-[#0b2647]"
-                    : "border-slate-300"
-                }`}>
-                  {form.priorities.includes("placement") && (
-                    <span className="material-symbols-outlined text-white" style={{ fontSize: 13 }}>check</span>
-                  )}
-                </div>
-                <span className={`font-bold mb-1 ${form.priorities.includes("placement") ? "text-[#0b2647]" : "text-slate-800"}`}>
-                  Prioritize Placement
-                </span>
-                <span className="text-xs text-slate-500">Focus on ROI, avg package, and industry tie-ups.</span>
-              </label>
-
-              {/* Rating */}
-              <label
-                onClick={() => togglePriority("rating")}
-                className={`relative flex flex-col p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                  form.priorities.includes("rating")
-                    ? "border-[#0b2647] bg-[#0b2647]/5"
-                    : "border-slate-100 hover:border-[#0b2647]/30"
-                }`}
-              >
-                <div className={`absolute top-4 right-4 size-5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  form.priorities.includes("rating")
-                    ? "bg-[#0b2647] border-[#0b2647]"
-                    : "border-slate-300"
-                }`}>
-                  {form.priorities.includes("rating") && (
-                    <span className="material-symbols-outlined text-white" style={{ fontSize: 13 }}>check</span>
-                  )}
-                </div>
-                <span className={`font-bold mb-1 ${form.priorities.includes("rating") ? "text-[#0b2647]" : "text-slate-800"}`}>
-                  Prioritize Ratings
-                </span>
-                <span className="text-xs text-slate-500">Focus on NIRF rankings, faculty quality, and infrastructure.</span>
-              </label>
-            </div>
-          </div>
-
-          {/* CTA */}
-          <div className="pt-2">
-            <button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-5 bg-[#0b2647] hover:bg-slate-800 text-[#ffbf00] rounded-xl text-lg font-extrabold shadow-xl shadow-[#0b2647]/20 transition-all active:scale-[0.98] disabled:opacity-70"
-            >
-              {loading ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 text-[#ffbf00]" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
-                  Analyzing…
-                </>
-              ) : (
-                <>
-                  GET MY RECOMMENDATIONS
-                  <span className="material-symbols-outlined font-bold">arrow_forward</span>
-                </>
-              )}
-            </button>
-            <p className="text-center text-xs text-slate-400 mt-4 font-medium uppercase tracking-widest">
-              {colleges.length}+ Colleges Analyzed Instantly
-            </p>
+          )}
+          <div className="max-h-52 overflow-y-auto">
+            {filtered.map(opt => (
+              <button key={opt} type="button" onClick={() => { onChange(opt); setOpen(false); setSearch(''); }}
+                className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-indigo-50 ${value === opt ? 'bg-indigo-50 text-[#565699] font-semibold' : 'text-gray-700'}`}
+                style={{ fontFamily: BODY }}>
+                {opt}
+              </button>
+            ))}
+            {filtered.length === 0 && <p className="px-4 py-3 text-sm text-gray-400">No results</p>}
           </div>
         </div>
-
-        {/* ── RESULTS ── */}
-        {results !== null && (
-          <div id="results" className="w-full max-w-5xl px-6 pb-20">
-            <div className="mb-8 text-center">
-              {results.length > 0 ? (
-                <>
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-bold uppercase tracking-wider mb-3">
-                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                    {results.length} matches found
-                  </div>
-                  <h2 className="text-3xl font-extrabold text-slate-900">
-                    Your Top College Matches
-                  </h2>
-                  <p className="text-slate-500 mt-1">
-                    Based on your {form.marks}% marks, ₹{form.budget}L budget, and {form.course} preference.
-                  </p>
-                </>
-              ) : (
-                <div className="py-16 text-center">
-                  <div className="text-5xl mb-4">😕</div>
-                  <h3 className="text-xl font-bold text-slate-700 mb-2">No colleges found</h3>
-                  <p className="text-slate-500">Try increasing your budget or adjusting marks.</p>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {results.map((college, i) => {
-                const minFee = Math.min(...college.courses.map(c => c.fees));
-                const topCourses = college.courses.slice(0, 2).map(c => c.name.replace("B.Tech ", "").replace("B.E. ", ""));
-
-                return (
-                  <div
-                    key={college.id}
-                    className="result-card card-in bg-white rounded-xl border border-slate-100 overflow-hidden flex flex-col"
-                    style={{ animationDelay: `${i * 60}ms` }}
-                  >
-                    {/* image */}
-                    <div className="relative h-36 overflow-hidden bg-slate-100">
-                      <img
-                        src={college.imageUrl}
-                        alt={college.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src =
-                            "https://images.unsplash.com/photo-1562774053-701939374585?w=600&q=80";
-                        }}
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      {/* rank badge */}
-                      <div className="absolute top-3 left-3 bg-[#ffbf00] text-[#0b2647] text-xs font-extrabold px-2.5 py-1 rounded-full shadow">
-                        #{i + 1} Match
-                      </div>
-                      {/* type */}
-                      <div className="absolute bottom-3 left-3">
-                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${typeColor[college.type]}`}>
-                          {college.type}
-                        </span>
-                      </div>
-                      {/* rating */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-xs font-bold text-amber-500">
-                        ★ {college.rating}
-                      </div>
-                    </div>
-
-                    {/* body */}
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="font-extrabold text-slate-900 text-sm leading-snug mb-0.5"
-                        style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                        {college.name}
-                      </h3>
-                      <p className="text-xs text-slate-400 mb-3 flex items-center gap-1">
-                        <span className="material-symbols-outlined" style={{ fontSize: 13 }}>location_on</span>
-                        {college.city}
-                      </p>
-
-                      {/* course chips */}
-                      <div className="flex flex-wrap gap-1.5 mb-3">
-                        {topCourses.map((name, idx) => (
-                          <span key={idx} className="text-xs bg-[#0b2647]/5 text-[#0b2647] px-2 py-0.5 rounded-md font-semibold">
-                            {name}
-                          </span>
-                        ))}
-                      </div>
-
-                      {/* stats */}
-                      <div className="grid grid-cols-3 gap-2 mb-4 mt-auto">
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-0.5">Avg Pkg</p>
-                          <p className="text-xs font-extrabold text-slate-800">{college.placement.averagePackage} LPA</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-0.5">Placed</p>
-                          <p className="text-xs font-extrabold text-slate-800">{college.placement.placementRate}%</p>
-                        </div>
-                        <div className="bg-slate-50 rounded-lg p-2 text-center">
-                          <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-0.5">Min Fee</p>
-                          <p className="text-xs font-extrabold text-slate-800">
-                            {minFee >= 100000 ? `₹${(minFee / 100000).toFixed(1)}L` : `₹${(minFee / 1000).toFixed(0)}K`}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* CTA */}
-                      <a
-                        href={college.applicationLink || college.website}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full text-center py-2.5 rounded-xl text-xs font-extrabold text-[#ffbf00] transition-all hover:opacity-90"
-                        style={{ background: "#0b2647" }}
-                      >
-                        VIEW &amp; APPLY →
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* retry */}
-            {results.length > 0 && (
-              <div className="text-center mt-10">
-                <button
-                  onClick={() => { setResults(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
-                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-[#0b2647] text-[#0b2647] font-bold text-sm hover:bg-[#0b2647]/5 transition-all"
-                >
-                  <span className="material-symbols-outlined text-base">tune</span>
-                  Refine Preferences
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
-
-      {/* footer */}
-      <Footer />
+      )}
     </div>
   );
 }
+
+const Recommend = () => {
+  const [step, setStep]               = useState<'form'|'results'>('form');
+  const [preferredCity, setCity]      = useState('Any City');
+  const [results, setResults]         = useState<RecommendationResult[]>([]);
+  const [profile, setProfile]         = useState<StudentProfile>({
+    marks: 75, preferredCourse: 'Computer Science', budgetMax: 250000,
+    prioritizePlacement: false, prioritizeRating: false, preferredCollegeType: 'Any',
+  });
+
+  const uniqueCourses = Array.from(new Set(colleges.flatMap(c => c.courses.map(co => co.name))));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    let filtered = [...colleges] as any[];
+    if (preferredCity !== 'Any City') filtered = filtered.filter(c => c.city?.toLowerCase().includes(preferredCity.toLowerCase()));
+    setResults(getRecommendations(profile, filtered));
+    setStep('results');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  return (
+    <div className="flex min-h-screen flex-col bg-[#f6f7f8]" style={{ fontFamily: BODY }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,100..900;1,9..40,100..900&family=JetBrains+Mono:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+        .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;}
+      `}</style>
+      <Header />
+      <main className="flex-1">
+        {step === 'form'
+          ? <RecommendForm profile={profile} setProfile={setProfile} onSubmit={handleSubmit}
+              uniqueCourses={uniqueCourses} preferredCity={preferredCity} setCity={setCity} />
+          : <RecommendResults results={results} profile={profile} preferredCity={preferredCity}
+              onReset={() => { setStep('form'); setResults([]); }} />
+        }
+      </main>
+    </div>
+  );
+};
+
+function RecommendForm({ profile, setProfile, onSubmit, uniqueCourses, preferredCity, setCity }: any) {
+  return (
+    <>
+      <section className="bg-gradient-to-br from-[#0b2647] via-[#1a1a4e] to-[#565699] py-16 text-center">
+        <div className="inline-flex items-center gap-2 bg-white/10 border border-white/15 rounded-full px-4 py-1.5 text-white/70 text-xs font-bold uppercase tracking-widest mb-4" style={{ fontFamily: DISPLAY }}>
+          <Sparkles className="w-4 h-4" /> AI-Powered Matching
+        </div>
+        <h1 className="text-3xl font-extrabold text-white mb-2" style={{ fontFamily: DISPLAY, letterSpacing: "-0.02em" }}>Find Your Perfect College</h1>
+        <p className="text-indigo-200 text-sm">Tell us about yourself and get personalised recommendations instantly.</p>
+      </section>
+
+      <section className="py-10">
+        <form onSubmit={onSubmit} className="mx-auto max-w-2xl px-4 space-y-4">
+
+          {/* Academic */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800" style={{ fontFamily: DISPLAY }}>
+              <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center"><GraduationCap className="w-4 h-4 text-amber-600" /></div>
+              Academic Performance
+            </h3>
+            <div>
+              <div className="flex justify-between mb-3">
+                <Label className="text-sm text-gray-500">Your Marks / Percentage</Label>
+                <span className="text-2xl font-bold text-[#565699]" style={{ fontFamily: MONO }}>{profile.marks}%</span>
+              </div>
+              <Slider value={[profile.marks]} onValueChange={v => setProfile((p: any) => ({ ...p, marks: v[0] }))} min={40} max={100} step={1} />
+              <p className="text-xs text-gray-400 mt-2">12th percentage or entrance exam percentile</p>
+            </div>
+            <div>
+              <Label className="text-sm text-gray-500 mb-2 block">Preferred Course</Label>
+              <PillDropdown value={profile.preferredCourse} options={uniqueCourses}
+                onChange={v => setProfile((p: any) => ({ ...p, preferredCourse: v }))}
+                icon={<GraduationCap className="w-4 h-4 text-[#565699]" />} searchable />
+            </div>
+          </div>
+
+          {/* Location */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-4">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800" style={{ fontFamily: DISPLAY }}>
+              <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center"><MapPin className="w-4 h-4 text-emerald-600" /></div>
+              Preferred Location
+            </h3>
+            <PillDropdown value={preferredCity} options={INDIA_CITIES} onChange={setCity}
+              icon={<MapPin className="w-4 h-4 text-emerald-500" />} searchable />
+          </div>
+
+          {/* Budget */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800" style={{ fontFamily: DISPLAY }}>
+              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center"><IndianRupee className="w-4 h-4 text-blue-600" /></div>
+              Budget & Preferences
+            </h3>
+            <div>
+              <div className="flex justify-between mb-3">
+                <Label className="text-sm text-gray-500">Maximum Annual Budget</Label>
+                <span className="text-2xl font-bold text-[#565699]" style={{ fontFamily: MONO }}>₹{(profile.budgetMax/100000).toFixed(1)}L</span>
+              </div>
+              <Slider value={[profile.budgetMax]} onValueChange={v => setProfile((p: any) => ({ ...p, budgetMax: v[0] }))} min={50000} max={500000} step={10000} />
+            </div>
+            <div>
+              <Label className="text-sm text-gray-500 mb-2 block">College Type</Label>
+              <PillDropdown value={profile.preferredCollegeType ?? 'Any'} options={['Any','Government','Private','Deemed']}
+                onChange={v => setProfile((p: any) => ({ ...p, preferredCollegeType: v }))} />
+            </div>
+          </div>
+
+          {/* Priorities */}
+          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-3">
+            <h3 className="flex items-center gap-2 text-sm font-bold text-slate-800 mb-2" style={{ fontFamily: DISPLAY }}>
+              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center"><TrendingUp className="w-4 h-4 text-purple-600" /></div>
+              What Matters Most?
+            </h3>
+            {[
+              { key:'prioritizePlacement', label:'Prioritize Placement', desc:'Weight placement stats higher' },
+              { key:'prioritizeRating',    label:'Prioritize Rating & Ranking', desc:'Focus on NIRF rank and reputation' },
+            ].map(({ key, label, desc }) => (
+              <div key={key} className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800" style={{ fontFamily: DISPLAY }}>{label}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+                </div>
+                <Switch checked={profile[key as keyof StudentProfile] as boolean}
+                  onCheckedChange={checked => setProfile((p: any) => ({
+                    ...p, [key]: checked,
+                    ...(key === 'prioritizePlacement' && checked ? { prioritizeRating: false } : {}),
+                    ...(key === 'prioritizeRating' && checked ? { prioritizePlacement: false } : {}),
+                  }))} />
+              </div>
+            ))}
+          </div>
+
+          <button type="submit"
+            className="w-full flex items-center justify-center gap-2 rounded-2xl py-4 text-base font-bold text-white shadow-lg hover:opacity-90 active:scale-95 transition-all"
+            style={{ background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY }}>
+            <Sparkles className="w-5 h-5" />
+            Get My Recommendations
+            <ArrowRight className="w-5 h-5" />
+          </button>
+        </form>
+      </section>
+    </>
+  );
+}
+
+function RecommendResults({ results, profile, preferredCity, onReset }: any) {
+  const stats = getRecommendationStats(results);
+
+  return (
+    <>
+      <section className="bg-gradient-to-br from-[#0b2647] to-[#565699] py-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          <button onClick={onReset} className="mb-5 flex items-center gap-2 text-sm text-blue-200 hover:text-white transition">
+            <ArrowLeft className="w-4 h-4" /> Back to Form
+          </button>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-2xl font-extrabold text-white mb-1" style={{ fontFamily: DISPLAY, letterSpacing: "-0.02em" }}>
+                Your Personalised Matches
+              </h1>
+              <p className="text-blue-200 text-sm">
+                {profile.marks}% · {profile.preferredCourse} · ₹{(profile.budgetMax/100000).toFixed(1)}L budget
+                {preferredCity !== 'Any City' && ` · ${preferredCity}`}
+              </p>
+            </div>
+            <div className="flex gap-3">
+              {[
+                { value: stats.totalMatches,            label: "Matches",    color: "text-white" },
+                { value: stats.eligibleCount,           label: "Eligible",   color: "text-emerald-300" },
+                { value: `₹${stats.avgPlacement.toFixed(1)}L`, label: "Avg Pkg", color: "text-amber-300" },
+              ].map(({ value, label, color }) => (
+                <div key={label} className="bg-white/10 backdrop-blur rounded-xl px-4 py-3 text-center">
+                  <p className={`text-xl font-bold ${color}`} style={{ fontFamily: MONO }}>{value}</p>
+                  <p className="text-xs text-blue-200">{label}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {results.length === 0 ? (
+            <div className="py-20 text-center bg-white rounded-2xl border border-gray-100">
+              <GraduationCap className="mx-auto h-16 w-16 text-gray-200 mb-4" />
+              <h3 className="text-lg font-bold text-gray-600 mb-2" style={{ fontFamily: DISPLAY }}>No Matching Colleges</h3>
+              <p className="text-gray-400 text-sm mb-6">Try adjusting your city, budget or preferences.</p>
+              <button onClick={onReset} className="px-6 py-3 text-white font-bold rounded-xl text-sm"
+                style={{ background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY }}>
+                Modify Preferences
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {results.map((result, index) => (
+                <RecommendCard key={result.college.id} result={result} rank={index + 1} />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function RecommendCard({ result, rank }: { result: RecommendationResult; rank: number }) {
+  const [showDetails, setShowDetails] = useState(false);
+  const { college, matchingCourses, totalScore, breakdown, explanation, eligibilityStatus } = result;
+
+  const StatusIcon  = eligibilityStatus === 'eligible' ? CheckCircle2 : eligibilityStatus === 'marginal' ? AlertTriangle : XCircle;
+  const statusColor = eligibilityStatus === 'eligible' ? 'text-emerald-500' : eligibilityStatus === 'marginal' ? 'text-amber-500' : 'text-red-400';
+  const statusText  = eligibilityStatus === 'eligible' ? 'Eligible' : eligibilityStatus === 'marginal' ? 'Marginal' : 'Not Eligible';
+  const minFee      = matchingCourses.length ? Math.min(...matchingCourses.map(c => c.fees)) : 0;
+
+  return (
+    <div className={`bg-white rounded-2xl border shadow-sm overflow-hidden ${rank === 1 ? "ring-2 ring-[#565699]" : "border-gray-100"}`}>
+
+      {/* ── ALWAYS VISIBLE: college info ── */}
+      <div className="p-5">
+        <div className="flex items-start gap-4">
+          {/* rank badge */}
+          <div className={`flex-shrink-0 w-11 h-11 rounded-full flex items-center justify-center text-sm font-extrabold ${rank === 1 ? "text-white" : "bg-gray-100 text-gray-500"}`}
+            style={rank === 1 ? { background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY } : { fontFamily: DISPLAY }}>
+            #{rank}
+          </div>
+
+          {/* college image */}
+          <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+            <img src={college.imageUrl} alt={college.name} className="w-full h-full object-cover"
+              onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1562774053-701939374585?w=200&q=80"; }} />
+          </div>
+
+          {/* main info */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-extrabold text-slate-900 leading-snug" style={{ fontFamily: DISPLAY }}>{college.name}</h3>
+                <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+                  <MapPin className="w-3 h-3" />{college.city} · {college.type}
+                </p>
+              </div>
+              <div className={`flex items-center gap-1 text-xs font-bold ${statusColor} bg-gray-50 px-2.5 py-1 rounded-full border flex-shrink-0`}
+                style={{ fontFamily: DISPLAY }}>
+                <StatusIcon className="w-3 h-3" />{statusText}
+              </div>
+            </div>
+
+            {/* key stats — always visible */}
+            <div className="flex flex-wrap gap-3 mt-3">
+              <div className="flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded-lg">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span className="text-xs font-bold text-amber-700" style={{ fontFamily: MONO }}>{college.rating}</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg">
+                <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="text-xs font-bold text-emerald-700" style={{ fontFamily: MONO }}>₹{college.placement.averagePackage}L avg</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg">
+                <IndianRupee className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-xs font-bold text-blue-700" style={{ fontFamily: MONO }}>
+                  {minFee >= 100000 ? `₹${(minFee/100000).toFixed(1)}L` : `₹${(minFee/1000).toFixed(0)}K`}/yr
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-indigo-50 px-2.5 py-1 rounded-lg">
+                <span className="text-xs font-bold text-[#565699]" style={{ fontFamily: MONO }}>{college.placement.placementRate}% placed</span>
+              </div>
+            </div>
+
+            {/* matching courses — always visible */}
+            {matchingCourses.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {matchingCourses.slice(0,3).map(c => (
+                  <span key={c.id} className="text-[10px] bg-indigo-50 text-[#565699] border border-indigo-100 px-2.5 py-1 rounded-full font-semibold" style={{ fontFamily: DISPLAY }}>
+                    {c.name.replace("B.Tech ","").replace("B.E. ","")} · ₹{(c.fees/100000).toFixed(1)}L/yr
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* score */}
+          <div className="text-center flex-shrink-0 hidden sm:block">
+            <p className="text-2xl font-extrabold text-[#565699]" style={{ fontFamily: MONO }}>{totalScore.toFixed(0)}</p>
+            <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider" style={{ fontFamily: DISPLAY }}>Score</p>
+          </div>
+        </div>
+
+        {/* ── ALWAYS VISIBLE: action buttons ── */}
+        <div className="flex gap-3 mt-4">
+          <Link to={`/colleges/${college.id}`}
+            className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold text-white transition hover:opacity-90"
+            style={{ background: "linear-gradient(135deg,#0b2647,#565699)", textDecoration: "none", fontFamily: DISPLAY }}>
+            View Full Details
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+          <a href={college.website} target="_blank" rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+            style={{ fontFamily: DISPLAY }}>
+            <ExternalLink className="w-4 h-4" />
+            Website
+          </a>
+          <button onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-bold border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
+            style={{ fontFamily: DISPLAY }}>
+            {showDetails ? "Hide" : "Why this?"} <ChevronDown className={`w-4 h-4 transition-transform ${showDetails ? "rotate-180" : ""}`} />
+          </button>
+        </div>
+      </div>
+
+      {/* ── COLLAPSIBLE: score breakdown + reasons ── */}
+      {showDetails && (
+        <div className="border-t border-gray-100 bg-gray-50 p-5">
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div>
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3" style={{ fontFamily: DISPLAY }}>Score Breakdown</h4>
+              <div className="space-y-2.5">
+                {[
+                  { label:"Eligibility",   score: breakdown.eligibilityScore },
+                  { label:"Placement",     score: breakdown.placementcore },
+                  { label:"Rating",        score: breakdown.ratingScore },
+                  { label:"Affordability", score: breakdown.affordabilityScore },
+                  { label:"Course Match",  score: breakdown.courseMatchScore },
+                ].map(({ label, score }) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-gray-500">{label}</span>
+                      <span className="font-bold text-slate-700" style={{ fontFamily: MONO }}>{score?.toFixed(0) ?? 0}%</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-200 rounded-full">
+                      <div className="h-1.5 rounded-full bg-[#565699] transition-all" style={{ width: `${Math.min(score || 0, 100)}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3" style={{ fontFamily: DISPLAY }}>Why This College?</h4>
+              <ul className="space-y-1.5">
+                {explanation.map((exp: string, i: number) => (
+                  <li key={i} className="text-sm text-gray-600 flex items-start gap-2">
+                    <span className="text-[#565699] mt-0.5">→</span>{exp}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default Recommend;
