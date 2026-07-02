@@ -1,65 +1,40 @@
 import mongoose from "mongoose";
 
-const collegeSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+const courseSchema = new mongoose.Schema({
+  name:         { type: String, required: true, trim: true },
+  duration:     { type: String, required: true, trim: true },
+  fees:         { type: Number, required: true },
+  seats:        { type: Number, required: true },
+  cutoffMarks:  { type: Number, required: true },
+  specializations: [{ type: String, trim: true }],
+});
 
-    shortName: {
-      type: String,
-      trim: true,
-    },
+const placementSchema = new mongoose.Schema({
+  averagePackage:  { type: Number, required: true },
+  highestPackage:  { type: Number, required: true },
+  placementRate:   { type: Number, required: true },
+  topRecruiters:   [{ type: String, trim: true }],
+});
 
-    city: {
-      type: String,
-      required: true,
-    },
+const collegeSchema = new mongoose.Schema({
+  name:        { type: String, required: true, trim: true },
+  shortName:   { type: String, required: true, trim: true },
+  city:        { type: String, required: true, trim: true },
+  type:        { type: String, enum: ["Government", "Private", "Deemed"], required: true },
+  ranking:     { type: Number, required: true },
+  rating:      { type: Number, min: 0, max: 5, required: true },
+  established: { type: Number, required: true },
+  affiliation: { type: String, required: true, trim: true },
+  description: { type: String, required: true, trim: true },
+  imageUrl:    { type: String, trim: true, default: "" },
+  website:     { type: String, trim: true, default: "" },
+  applicationLink: { type: String, trim: true, default: "" },
+  approvedBy:  [{ type: String, trim: true }],
+  facilities:  [{ type: String, trim: true }],
+  courses:     [courseSchema],
+  placement:   { type: placementSchema, required: true },
+  isActive:    { type: Boolean, default: true },
+  addedBy:     { type: String, default: "admin" },
+}, { timestamps: true });
 
-    state: {
-      type: String,
-      default: "Karnataka",
-    },
-
-    type: {
-      type: String,
-      enum: ["Government", "Private", "Deemed"],
-      required: true,
-    },
-
-    ranking: {
-      type: Number,
-    },
-
-    imageUrl: {
-      type: String,
-    },
-
-    courses: [
-      {
-        name: String,
-        duration: String,
-        fees: Number,
-        cutoffMarks: Number,
-        seats: Number,
-      },
-    ],
-
-    placement: {
-      averagePackage: Number,
-      highestPackage: Number,
-      placementRate: Number,
-      topRecruiters: [String],
-    },
-
-    approvedBy: [String], // AICTE, UGC, etc.
-  },
-  {
-    timestamps: true,
-  }
-);
-
-const College = mongoose.model("College", collegeSchema);
-export default College;
+export default mongoose.model("College", collegeSchema);

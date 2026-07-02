@@ -1,27 +1,30 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
+import { CheckCircle2, Eye, EyeOff, XCircle, Loader2 } from "lucide-react";
 
-const API     = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const DISPLAY = "'Bricolage Grotesque', sans-serif";
-const BODY    = "'DM Sans', sans-serif";
+const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
 
-  const [email, setEmail]         = useState("");
-  const [password, setPassword]   = useState("");
-  const [confirm, setConfirm]     = useState("");
-  const [showPw, setShowPw]       = useState(false);
-  const [status, setStatus]       = useState<"idle"|"loading"|"success"|"error">("idle");
-  const [message, setMessage]     = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [message, setMessage] = useState("");
 
   const isStrong = password.length >= 6;
-  const matches  = password === confirm && confirm.length > 0;
+  const matches = password === confirm && confirm.length > 0;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isStrong) { setMessage("Password must be at least 6 characters"); setStatus("error"); return; }
-    if (!matches)  { setMessage("Passwords do not match"); setStatus("error"); return; }
+    if (!matches) { setMessage("Passwords do not match"); setStatus("error"); return; }
 
     setStatus("loading");
     setMessage("");
@@ -48,165 +51,91 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-[#f6f7f8]" style={{ fontFamily: BODY }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,100..900;1,9..40,100..900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-        .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;}
-        @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-        .card{animation:fadeUp 0.4s ease both;}
-        .strength-bar{transition:width 0.3s ease,background 0.3s ease;}
-      `}</style>
-
-      <div className="card w-full max-w-md">
-
-        {/* logo */}
-        <div className="text-center mb-8">
-          <Link to="/" style={{ textDecoration:"none" }}>
-            <span className="text-2xl font-extrabold text-slate-900" style={{ fontFamily:DISPLAY, letterSpacing:"-0.03em" }}>
-              College<span style={{ color:"#565699" }}>Match</span>
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <Link to="/" className="no-underline">
+            <span className="font-display text-2xl font-bold tracking-tight text-foreground">
+              College<span className="text-primary">Match</span>
             </span>
           </Link>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-
+        <div className="rounded-2xl border border-border bg-card p-8 shadow-sm">
           {status === "success" ? (
             <div className="text-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="material-symbols-outlined text-emerald-600 text-3xl">check_circle</span>
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+                <CheckCircle2 className="h-8 w-8 text-success" />
               </div>
-              <h2 className="text-xl font-extrabold text-slate-900 mb-2" style={{ fontFamily:DISPLAY }}>
-                Password updated!
-              </h2>
-              <p className="text-slate-500 text-sm mb-1">Your password has been reset successfully.</p>
-              <p className="text-xs text-gray-400 mb-6">Redirecting to login…</p>
-              <Link to="/login"
-                className="block w-full text-center py-3 rounded-xl text-sm font-bold text-white transition hover:opacity-90"
-                style={{ background:"linear-gradient(135deg,#0b2647,#565699)", textDecoration:"none", fontFamily:DISPLAY }}>
-                Go to Login
-              </Link>
+              <h2 className="mb-2 font-display text-xl font-bold text-foreground">Password updated!</h2>
+              <p className="mb-1 text-sm text-muted-foreground">Your password has been reset successfully.</p>
+              <p className="mb-6 text-xs text-muted-foreground">Redirecting to login…</p>
+              <Button className="w-full" asChild><Link to="/login">Go to Login</Link></Button>
             </div>
           ) : (
             <>
               <div className="mb-6">
-                <h2 className="text-2xl font-extrabold text-slate-900 mb-1" style={{ fontFamily:DISPLAY, letterSpacing:"-0.02em" }}>
-                  Reset password
-                </h2>
-                <p className="text-slate-500 text-sm">Enter your email and choose a new password.</p>
+                <h2 className="mb-1 font-display text-2xl font-bold tracking-tight text-foreground">Reset password</h2>
+                <p className="text-sm text-muted-foreground">Enter your email and choose a new password.</p>
               </div>
 
               {status === "error" && message && (
-                <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+                <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                   {message}
                 </div>
               )}
 
               <form onSubmit={handleSubmit} className="space-y-4">
-
-                {/* email */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5" style={{ fontFamily:DISPLAY }}>
-                    Email Address
-                  </label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    required
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#565699] transition"
-                    style={{ fontFamily:BODY }}
-                  />
+                <div className="space-y-1.5">
+                  <Label>Email Address</Label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
                 </div>
 
-                {/* new password */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5" style={{ fontFamily:DISPLAY }}>
-                    New Password
-                  </label>
+                <div className="space-y-1.5">
+                  <Label>New Password</Label>
                   <div className="relative">
-                    <input
-                      type={showPw ? "text" : "password"}
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      placeholder="Min. 6 characters"
-                      required
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[#565699] transition"
-                      style={{ fontFamily:BODY }}
-                    />
+                    <Input type={showPw ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)}
+                      placeholder="Min. 6 characters" required className="pr-12" />
                     <button type="button" onClick={() => setShowPw(s => !s)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                      <span className="material-symbols-outlined text-xl">{showPw ? "visibility_off" : "visibility"}</span>
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
-                  {/* strength bar */}
                   {password.length > 0 && (
                     <div className="mt-2">
-                      <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                        <div className="strength-bar h-full rounded-full" style={{
-                          width: password.length >= 12 ? "100%" : password.length >= 8 ? "66%" : "33%",
-                          background: password.length >= 12 ? "#22c55e" : password.length >= 8 ? "#f4c542" : "#ef4444",
-                        }} />
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div className={cn(
+                          "h-full rounded-full transition-all",
+                          password.length >= 12 ? "w-full bg-success" : password.length >= 8 ? "w-2/3 bg-accent" : "w-1/3 bg-destructive",
+                        )} />
                       </div>
-                      <p className="text-xs mt-1" style={{
-                        color: password.length >= 12 ? "#22c55e" : password.length >= 8 ? "#d97706" : "#ef4444",
-                        fontFamily: BODY,
-                      }}>
+                      <p className={cn("mt-1 text-xs", password.length >= 12 ? "text-success" : password.length >= 8 ? "text-accent-foreground" : "text-destructive")}>
                         {password.length >= 12 ? "Strong" : password.length >= 8 ? "Good" : "Weak"}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {/* confirm password */}
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5" style={{ fontFamily:DISPLAY }}>
-                    Confirm Password
-                  </label>
+                <div className="space-y-1.5">
+                  <Label>Confirm Password</Label>
                   <div className="relative">
-                    <input
-                      type={showPw ? "text" : "password"}
-                      value={confirm}
-                      onChange={e => setConfirm(e.target.value)}
-                      placeholder="Repeat your password"
-                      required
-                      className={`w-full border rounded-xl px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 transition ${
-                        confirm.length > 0
-                          ? matches ? "border-emerald-300 focus:ring-emerald-400" : "border-red-300 focus:ring-red-400"
-                          : "border-gray-200 focus:ring-[#565699]"
-                      }`}
-                      style={{ fontFamily:BODY }}
-                    />
+                    <Input type={showPw ? "text" : "password"} value={confirm} onChange={e => setConfirm(e.target.value)}
+                      placeholder="Repeat your password" required className={cn("pr-12", confirm.length > 0 && (matches ? "border-success focus-visible:ring-success" : "border-destructive focus-visible:ring-destructive"))} />
                     {confirm.length > 0 && (
-                      <span className={`material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-xl ${matches ? "text-emerald-500" : "text-red-400"}`}>
-                        {matches ? "check_circle" : "cancel"}
-                      </span>
+                      matches
+                        ? <CheckCircle2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-success" />
+                        : <XCircle className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-destructive" />
                     )}
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={status === "loading"}
-                  className="w-full py-3 rounded-xl text-sm font-bold text-white transition hover:opacity-90 disabled:opacity-60 mt-2"
-                  style={{ background:"linear-gradient(135deg,#0b2647,#565699)", fontFamily:DISPLAY }}>
-                  {status === "loading" ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-                      </svg>
-                      Updating…
-                    </span>
-                  ) : "Reset Password →"}
-                </button>
+                <Button type="submit" className="mt-2 w-full" disabled={status === "loading"}>
+                  {status === "loading" ? <><Loader2 className="h-4 w-4 animate-spin" /> Updating…</> : "Reset Password →"}
+                </Button>
               </form>
 
               <div className="mt-6 text-center">
-                <Link to="/login" className="text-sm text-[#565699] font-semibold hover:underline" style={{ fontFamily:DISPLAY }}>
-                  ← Back to Login
-                </Link>
+                <Link to="/login" className="text-sm font-semibold text-primary hover:underline">← Back to Login</Link>
               </div>
             </>
           )}

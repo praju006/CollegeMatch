@@ -1,62 +1,53 @@
 import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
-import { Heart, Star, FileText, User, MapPin, Trash2, ChevronDown, Pencil, Check } from "lucide-react";
-import colleges from "@/data/colleges";
+import { Footer } from "@/components/layout/Footer";
+import { Heart, Star, FileText, User as UserIcon, MapPin, Trash2, ChevronDown, Pencil, Check, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { getColleges } from "@/lib/api";
+import type { College } from "@/types/college";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
-const DISPLAY = "'Bricolage Grotesque', sans-serif";
-const BODY    = "'DM Sans', sans-serif";
 
 const INDIA_CITIES = [
-  "Bangalore","Mysore","Hubli","Mangalore","Mumbai","Pune","Nagpur",
-  "New Delhi","Noida","Gurgaon","Chennai","Coimbatore","Hyderabad",
-  "Kochi","Thiruvananthapuram","Kolkata","Ahmedabad","Surat","Jaipur",
-  "Bhopal","Indore","Lucknow","Kanpur","Chandigarh","Patna","Bhubaneswar","Guwahati",
+  "Bangalore", "Mysore", "Hubli", "Mangalore", "Mumbai", "Pune", "Nagpur",
+  "New Delhi", "Noida", "Gurgaon", "Chennai", "Coimbatore", "Hyderabad",
+  "Kochi", "Thiruvananthapuram", "Kolkata", "Ahmedabad", "Surat", "Jaipur",
+  "Bhopal", "Indore", "Lucknow", "Kanpur", "Chandigarh", "Patna", "Bhubaneswar", "Guwahati",
 ];
 
-// ── resolve saved college names → full college objects from local data ──
-const resolveColleges = (savedColleges: any[]) => {
-  if (!savedColleges?.length) return [];
-  return savedColleges
-    .map(item => {
-      const name = typeof item === "string" ? item : item?.name;
-      return colleges.find(c => c.name === name);
-    })
-    .filter(Boolean);
-};
-
 export default function Profile() {
-  const [user, setUser]           = useState<any>(null);
-  const [savedList, setSavedList] = useState<any[]>([]);
+  const { user: authUser } = useAuth();
+  const token = localStorage.getItem("token");
+  const userId = authUser?._id ?? authUser?.id ?? null;
+
+  const [profile, setProfile] = useState<any>(null);
+  const [allColleges, setAllColleges] = useState<College[]>([]);
+  const [savedList, setSavedList] = useState<College[]>([]);
   const [activeTab, setActiveTab] = useState("saved");
-  const [loading, setLoading]     = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [editingPrefs, setEditingPrefs]   = useState(false);
-  const [prefCity, setPrefCity]           = useState("");
-  const [prefCourse, setPrefCourse]       = useState("");
-  const [prefBudget, setPrefBudget]       = useState("");
-  const [citySearch, setCitySearch]       = useState("");
-  const [cityDropOpen, setCityDropOpen]   = useState(false);
-  const [savingPrefs, setSavingPrefs]     = useState(false);
+  const [editingPrefs, setEditingPrefs] = useState(false);
+  const [prefCity, setPrefCity] = useState("");
+  const [prefCourse, setPrefCourse] = useState("");
+  const [prefBudget, setPrefBudget] = useState("");
+  const [citySearch, setCitySearch] = useState("");
+  const [cityDropOpen, setCityDropOpen] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
 
-  const userStr = localStorage.getItem("user");
-  const userId  = userStr ? JSON.parse(userStr).id : null;
-  const token   = localStorage.getItem("token");
-
-  const fetchProfile = useCallback(async () => {
+  const fetchProfile = useCallback(async (colleges: College[]) => {
     if (!userId || !token) { setLoading(false); return; }
     try {
-      const res  = await fetch(`${API}/api/profile/${userId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API}/api/profile/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
-      setUser(data);
+      setProfile(data);
       setPrefCity(data.preferredCity || "");
       setPrefCourse(data.preferredCourse || "");
       setPrefBudget(data.budgetRange ? String(data.budgetRange) : "");
-      // resolve string names → full college objects
-      setSavedList(resolveColleges(data.savedColleges || []));
+      const names: string[] = (data.savedColleges || []).map((c: any) => typeof c === "string" ? c : c?.name);
+      setSavedList(colleges.filter(c => names.includes(c.name)));
     } catch (err) {
       console.error("Failed to load profile:", err);
     } finally {
@@ -65,10 +56,17 @@ export default function Profile() {
   }, [userId, token]);
 
   useEffect(() => {
-    fetchProfile();
-    window.addEventListener("focus", fetchProfile);
-    return () => window.removeEventListener("focus", fetchProfile);
+    getColleges().then(colleges => {
+      setAllColleges(colleges);
+      fetchProfile(colleges);
+    }).catch(() => setLoading(false));
   }, [fetchProfile]);
+
+  useEffect(() => {
+    const handler = () => { if (allColleges.length) fetchProfile(allColleges); };
+    window.addEventListener("focus", handler);
+    return () => window.removeEventListener("focus", handler);
+  }, [allColleges, fetchProfile]);
 
   const savePreferences = async () => {
     setSavingPrefs(true);
@@ -78,7 +76,7 @@ export default function Profile() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userId, preferredCity: prefCity, preferredCourse: prefCourse, budgetRange: Number(prefBudget) || 0 }),
       });
-      await fetchProfile();
+      await fetchProfile(allColleges);
       setEditingPrefs(false);
     } catch (err) {
       console.error("Failed to save preferences:", err);
@@ -94,7 +92,7 @@ export default function Profile() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ userId, collegeName }),
       });
-      setSavedList(prev => prev.filter((c: any) => c.name !== collegeName));
+      setSavedList(prev => prev.filter(c => c.name !== collegeName));
     } catch (err) {
       console.error("Failed to remove college:", err);
     }
@@ -104,13 +102,10 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen flex-col" style={{ fontFamily: BODY }}>
+      <div className="flex min-h-screen flex-col bg-background">
         <Header />
         <div className="flex flex-1 items-center justify-center">
-          <div className="text-center">
-            <div className="w-10 h-10 border-4 border-[#565699] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-gray-500 text-sm">Loading profile…</p>
-          </div>
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       </div>
     );
@@ -118,27 +113,26 @@ export default function Profile() {
 
   if (!userId || !token) {
     return (
-      <div className="flex min-h-screen flex-col" style={{ fontFamily: BODY }}>
+      <div className="flex min-h-screen flex-col bg-background">
         <Header />
-        <div className="flex flex-1 items-center justify-center flex-col gap-4 text-center px-6">
-          <div className="w-16 h-16 bg-indigo-50 rounded-full flex items-center justify-center">
-            <User className="w-8 h-8 text-[#565699]" />
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+            <UserIcon className="h-8 w-8 text-primary" />
           </div>
-          <p className="text-lg font-bold text-slate-800" style={{ fontFamily: DISPLAY }}>Please log in to view your profile</p>
-          <p className="text-sm text-gray-400">Save colleges, get recommendations and track your applications.</p>
+          <p className="font-display text-lg font-semibold text-foreground">Please log in to view your profile</p>
+          <p className="text-sm text-muted-foreground">Save colleges, get recommendations and track your applications.</p>
         </div>
       </div>
     );
   }
 
   const tabs = [
-    { id: "saved",       label: "Saved",       icon: <Heart className="w-4 h-4" />,    count: savedList.length },
-    { id: "recommended", label: "Recommended", icon: <Star className="w-4 h-4" />,     count: null },
-    { id: "applied",     label: "Applied",     icon: <FileText className="w-4 h-4" />, count: 0 },
+    { id: "saved", label: "Saved", icon: Heart, count: savedList.length },
+    { id: "recommended", label: "Recommended", icon: Star, count: null },
+    { id: "applied", label: "Applied", icon: FileText, count: 0 },
   ];
 
-  // AI recommendations from local data based on preferences
-  const recommended = colleges
+  const recommended = allColleges
     .filter(c => {
       if (prefCity && c.city !== prefCity) return false;
       if (prefBudget && c.courses.every(co => co.fees > Number(prefBudget))) return false;
@@ -148,68 +142,56 @@ export default function Profile() {
     .slice(0, 6);
 
   return (
-    <div className="flex min-h-screen flex-col bg-[#f6f7f8]" style={{ fontFamily: BODY }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Sans:ital,opsz,wght@0,9..40,100..900;1,9..40,100..900&display=swap');
-        @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
-        .material-symbols-outlined{font-family:'Material Symbols Outlined';font-weight:normal;font-style:normal;line-height:1;display:inline-block;white-space:nowrap;direction:ltr;}
-      `}</style>
+    <div className="flex min-h-screen flex-col bg-background">
       <Header />
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8">
-
-        {/* Profile Card */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-sm"
-              style={{ background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY }}>
-              {user?.name?.[0]?.toUpperCase() ?? "U"}
+      <main className="mx-auto w-full max-w-4xl flex-1 px-4 py-8">
+        <div className="mb-6 rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground shadow-sm">
+              {profile?.name?.[0]?.toUpperCase() ?? "U"}
             </div>
             <div className="flex-1">
-              <h1 className="text-lg font-extrabold text-slate-900" style={{ fontFamily: DISPLAY }}>{user?.name}</h1>
-              <p className="text-sm text-gray-400">{user?.email}</p>
+              <h1 className="font-display text-lg font-bold text-foreground">{profile?.name}</h1>
+              <p className="text-sm text-muted-foreground">{profile?.email}</p>
             </div>
-            <button onClick={() => setEditingPrefs(!editingPrefs)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#565699] border border-[#565699]/30 rounded-full px-3 py-1.5 hover:bg-indigo-50 transition"
-              style={{ fontFamily: DISPLAY }}>
-              <Pencil className="w-3 h-3" />
-              Edit Preferences
-            </button>
+            <Button variant="outline" size="sm" onClick={() => setEditingPrefs(!editingPrefs)}>
+              <Pencil className="h-3.5 w-3.5" /> Edit Preferences
+            </Button>
           </div>
 
           {!editingPrefs ? (
             <div className="flex flex-wrap gap-2">
-              <span className="flex items-center gap-1.5 bg-indigo-50 text-[#565699] text-xs font-semibold px-3 py-1.5 rounded-full">
-                <MapPin className="w-3 h-3" />{user?.preferredCity || "City not set"}
+              <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary">
+                <MapPin className="h-3 w-3" />{profile?.preferredCity || "City not set"}
               </span>
-              <span className="flex items-center gap-1.5 bg-purple-50 text-purple-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                🎓 {user?.preferredCourse || "Course not set"}
+              <span className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-semibold text-secondary-foreground">
+                🎓 {profile?.preferredCourse || "Course not set"}
               </span>
-              <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 rounded-full">
-                💰 {user?.budgetRange ? `₹${(user.budgetRange / 100000).toFixed(1)}L budget` : "Budget not set"}
+              <span className="flex items-center gap-1.5 rounded-full bg-success/10 px-3 py-1.5 text-xs font-semibold text-success">
+                💰 {profile?.budgetRange ? `₹${(profile.budgetRange / 100000).toFixed(1)}L budget` : "Budget not set"}
               </span>
             </div>
           ) : (
-            <div className="mt-3 grid gap-3 sm:grid-cols-3 border-t pt-4">
+            <div className="mt-3 grid gap-3 border-t border-border pt-4 sm:grid-cols-3">
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block" style={{ fontFamily: DISPLAY }}>Preferred City</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preferred City</label>
                 <div className="relative">
                   <button onClick={() => setCityDropOpen(!cityDropOpen)}
-                    className="w-full flex items-center justify-between border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#565699] transition">
-                    <span className={prefCity ? "text-gray-800" : "text-gray-400"}>{prefCity || "Select city"}</span>
-                    <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${cityDropOpen ? "rotate-180" : ""}`} />
+                    className="flex w-full items-center justify-between rounded-xl border border-border bg-card px-3 py-2.5 text-sm transition hover:bg-muted focus:outline-none focus:ring-2 focus:ring-primary">
+                    <span className={prefCity ? "text-foreground" : "text-muted-foreground"}>{prefCity || "Select city"}</span>
+                    <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", cityDropOpen && "rotate-180")} />
                   </button>
                   {cityDropOpen && (
-                    <div className="absolute top-full mt-1 left-0 z-50 w-full bg-white border border-gray-100 rounded-xl shadow-xl overflow-hidden">
-                      <div className="p-2 border-b">
-                        <input type="text" placeholder="Search city…" value={citySearch}
-                          onChange={e => setCitySearch(e.target.value)} autoFocus
-                          className="w-full px-3 py-1.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-[#565699]" />
+                    <div className="absolute left-0 top-full z-50 mt-1 w-full overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+                      <div className="border-b border-border p-2">
+                        <input type="text" placeholder="Search city…" value={citySearch} onChange={e => setCitySearch(e.target.value)} autoFocus
+                          className="w-full rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
                       </div>
                       <div className="max-h-44 overflow-y-auto">
                         {filteredCities.map(city => (
                           <button key={city} onClick={() => { setPrefCity(city); setCityDropOpen(false); setCitySearch(""); }}
-                            className={`w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 transition ${prefCity === city ? "text-[#565699] font-semibold" : "text-gray-700"}`}>
+                            className={cn("w-full px-4 py-2.5 text-left text-sm transition-colors hover:bg-muted", prefCity === city ? "font-semibold text-primary" : "text-foreground")}>
                             {city}
                           </button>
                         ))}
@@ -219,45 +201,36 @@ export default function Profile() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block" style={{ fontFamily: DISPLAY }}>Preferred Course</label>
-                <input type="text" value={prefCourse} onChange={e => setPrefCourse(e.target.value)}
-                  placeholder="e.g. B.Tech Computer Science"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#565699]" />
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preferred Course</label>
+                <input type="text" value={prefCourse} onChange={e => setPrefCourse(e.target.value)} placeholder="e.g. B.Tech Computer Science"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
               <div>
-                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5 block" style={{ fontFamily: DISPLAY }}>Budget (₹/year)</label>
-                <input type="number" value={prefBudget} onChange={e => setPrefBudget(e.target.value)}
-                  placeholder="e.g. 500000"
-                  className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#565699]" />
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">Budget (₹/year)</label>
+                <input type="number" value={prefBudget} onChange={e => setPrefBudget(e.target.value)} placeholder="e.g. 500000"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary" />
               </div>
-              <div className="sm:col-span-3 flex gap-2 justify-end">
-                <button onClick={() => setEditingPrefs(false)}
-                  className="px-4 py-2 text-sm border border-gray-200 rounded-xl hover:bg-gray-50 transition" style={{ fontFamily: DISPLAY }}>
-                  Cancel
-                </button>
-                <button onClick={savePreferences} disabled={savingPrefs}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-white rounded-xl transition disabled:opacity-50"
-                  style={{ background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY }}>
-                  <Check className="w-4 h-4" />
-                  {savingPrefs ? "Saving…" : "Save Preferences"}
-                </button>
+              <div className="flex justify-end gap-2 sm:col-span-3">
+                <Button variant="outline" onClick={() => setEditingPrefs(false)}>Cancel</Button>
+                <Button onClick={savePreferences} disabled={savingPrefs}>
+                  <Check className="h-4 w-4" /> {savingPrefs ? "Saving…" : "Save Preferences"}
+                </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
+        <div className="mb-6 flex flex-wrap gap-2">
           {tabs.map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition ${
-                activeTab === tab.id ? "text-white shadow-sm" : "bg-white text-gray-500 border border-gray-100 hover:bg-gray-50"
-              }`}
-              style={activeTab === tab.id ? { background: "linear-gradient(135deg,#0b2647,#565699)", fontFamily: DISPLAY } : { fontFamily: DISPLAY }}>
-              {tab.icon}
+              className={cn(
+                "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-colors",
+                activeTab === tab.id ? "bg-primary text-primary-foreground shadow-sm" : "border border-border bg-card text-muted-foreground hover:bg-muted",
+              )}>
+              <tab.icon className="h-4 w-4" />
               {tab.label}
               {tab.count !== null && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === tab.id ? "bg-white/20 text-white" : "bg-gray-100 text-gray-400"}`}>
+                <span className={cn("rounded-full px-1.5 py-0.5 text-xs font-bold", activeTab === tab.id ? "bg-white/20 text-primary-foreground" : "bg-muted text-muted-foreground")}>
                   {tab.count}
                 </span>
               )}
@@ -265,54 +238,41 @@ export default function Profile() {
           ))}
         </div>
 
-        {/* ── SAVED COLLEGES ── */}
         {activeTab === "saved" && (
           <div>
-            <h2 className="text-base font-bold text-slate-800 mb-4" style={{ fontFamily: DISPLAY }}>
-              Saved Colleges <span className="text-gray-400 font-normal text-sm">({savedList.length})</span>
+            <h2 className="mb-4 font-display text-base font-bold text-foreground">
+              Saved Colleges <span className="text-sm font-normal text-muted-foreground">({savedList.length})</span>
             </h2>
             {savedList.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <Heart className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                <p className="font-semibold text-gray-500 mb-1" style={{ fontFamily: DISPLAY }}>No saved colleges yet</p>
-                <p className="text-sm text-gray-400 mb-4">Click the ♡ heart on any college card to save it here.</p>
-                <Link to="/colleges"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white rounded-xl transition hover:opacity-90"
-                  style={{ background: "linear-gradient(135deg,#0b2647,#565699)", textDecoration: "none", fontFamily: DISPLAY }}>
-                  Browse Colleges →
-                </Link>
+              <div className="rounded-xl border border-border bg-card p-12 text-center">
+                <Heart className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="mb-1 font-display font-semibold text-foreground">No saved colleges yet</p>
+                <p className="mb-4 text-sm text-muted-foreground">Click the ♡ heart on any college card to save it here.</p>
+                <Button asChild><Link to="/colleges">Browse Colleges →</Link></Button>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {savedList.map((college: any) => (
-                  <div key={college.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
-                    <div className="relative h-28 overflow-hidden bg-gray-100">
-                      <img src={college.imageUrl} alt={college.name} className="w-full h-full object-cover"
+                {savedList.map(college => (
+                  <div key={college.id} className="overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-card-hover">
+                    <div className="relative h-28 overflow-hidden bg-muted">
+                      <img src={college.imageUrl} alt={college.name} className="h-full w-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80"; }} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      <span className="absolute top-2 left-2 bg-white/90 text-amber-500 text-xs font-bold px-2 py-0.5 rounded-full">
-                        ★ {college.rating}
-                      </span>
+                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-500">★ {college.rating}</span>
                       <button onClick={() => removeCollege(college.name)}
-                        className="absolute top-2 right-2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-white transition">
-                        <Trash2 className="w-3.5 h-3.5" />
+                        className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-destructive/70 transition hover:bg-white hover:text-destructive">
+                        <Trash2 className="h-3.5 w-3.5" />
                       </button>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-bold text-slate-800 text-sm leading-snug mb-1" style={{ fontFamily: DISPLAY }}>{college.name}</h3>
-                      <p className="text-xs text-gray-400 flex items-center gap-1 mb-3">
-                        <MapPin className="w-3 h-3" />{college.city} · {college.type}
-                      </p>
+                      <h3 className="mb-1 font-display text-sm font-semibold leading-snug text-foreground">{college.name}</h3>
+                      <p className="mb-3 flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{college.city} · {college.type}</p>
                       <div className="flex items-center justify-between">
-                        <div className="flex gap-3 text-xs text-gray-500">
-                          <span className="font-semibold text-emerald-600">₹{college.placement?.averagePackage}L avg pkg</span>
+                        <div className="flex gap-3 text-xs text-muted-foreground">
+                          <span className="font-semibold text-success">₹{college.placement?.averagePackage}L avg pkg</span>
                           <span>{college.placement?.placementRate}% placed</span>
                         </div>
-                        <Link to={`/colleges/${college.id}`}
-                          className="text-xs font-bold text-[#565699] hover:underline"
-                          style={{ textDecoration: "none", fontFamily: DISPLAY }}>
-                          View →
-                        </Link>
+                        <Link to={`/colleges/${college.id}`} className="text-xs font-semibold text-primary no-underline hover:underline">View →</Link>
                       </div>
                     </div>
                   </div>
@@ -322,39 +282,39 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── RECOMMENDED ── */}
         {activeTab === "recommended" && (
           <div>
-            <h2 className="text-base font-bold text-slate-800 mb-1" style={{ fontFamily: DISPLAY }}>Recommended For You</h2>
-            <p className="text-xs text-gray-400 mb-4">Based on your preferences — {prefCity || "any city"}, budget ₹{prefBudget ? (Number(prefBudget)/100000).toFixed(1)+"L" : "any"}/yr</p>
+            <h2 className="mb-1 font-display text-base font-bold text-foreground">Recommended For You</h2>
+            <p className="mb-4 text-xs text-muted-foreground">
+              Based on your preferences — {prefCity || "any city"}, budget ₹{prefBudget ? (Number(prefBudget) / 100000).toFixed(1) + "L" : "any"}/yr
+            </p>
             {!prefCity && !prefBudget ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <Star className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-                <p className="font-semibold text-gray-500 mb-1" style={{ fontFamily: DISPLAY }}>Set your preferences first</p>
-                <p className="text-sm text-gray-400 mb-4">Click "Edit Preferences" above to set your city and budget.</p>
+              <div className="rounded-xl border border-border bg-card p-12 text-center">
+                <Star className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+                <p className="mb-1 font-display font-semibold text-foreground">Set your preferences first</p>
+                <p className="text-sm text-muted-foreground">Click "Edit Preferences" above to set your city and budget.</p>
               </div>
             ) : recommended.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-                <p className="text-gray-400 text-sm">No colleges match your current preferences. Try adjusting your budget or city.</p>
+              <div className="rounded-xl border border-border bg-card p-12 text-center">
+                <p className="text-sm text-muted-foreground">No colleges match your current preferences. Try adjusting your budget or city.</p>
               </div>
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
-                {recommended.map((college: any) => (
+                {recommended.map(college => (
                   <Link key={college.id} to={`/colleges/${college.id}`}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden hover:shadow-md hover:-translate-y-0.5 transition-all"
-                    style={{ textDecoration: "none" }}>
-                    <div className="relative h-28 overflow-hidden bg-gray-100">
-                      <img src={college.imageUrl} alt={college.name} className="w-full h-full object-cover"
+                    className="overflow-hidden rounded-xl border border-border bg-card no-underline shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-card-hover">
+                    <div className="relative h-28 overflow-hidden bg-muted">
+                      <img src={college.imageUrl} alt={college.name} className="h-full w-full object-cover"
                         onError={e => { (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1562774053-701939374585?w=400&q=80"; }} />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                      <span className="absolute top-2 left-2 bg-white/90 text-amber-500 text-xs font-bold px-2 py-0.5 rounded-full">★ {college.rating}</span>
-                      <span className="absolute top-2 right-2 bg-[#565699] text-white text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ fontFamily: DISPLAY }}>#{college.ranking}</span>
+                      <span className="absolute left-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-xs font-bold text-amber-500">★ {college.rating}</span>
+                      <span className="absolute right-2 top-2 rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">#{college.ranking}</span>
                     </div>
                     <div className="p-4">
-                      <h3 className="font-bold text-slate-800 text-sm leading-snug mb-1" style={{ fontFamily: DISPLAY }}>{college.name}</h3>
-                      <p className="text-xs text-gray-400 flex items-center gap-1 mb-2"><MapPin className="w-3 h-3" />{college.city}</p>
-                      <div className="flex gap-3 text-xs text-gray-500">
-                        <span className="font-semibold text-emerald-600">₹{college.placement?.averagePackage}L avg</span>
+                      <h3 className="mb-1 font-display text-sm font-semibold leading-snug text-foreground">{college.name}</h3>
+                      <p className="mb-2 flex items-center gap-1 text-xs text-muted-foreground"><MapPin className="h-3 w-3" />{college.city}</p>
+                      <div className="flex gap-3 text-xs text-muted-foreground">
+                        <span className="font-semibold text-success">₹{college.placement?.averagePackage}L avg</span>
                         <span>{college.placement?.placementRate}% placed</span>
                         <span>{college.type}</span>
                       </div>
@@ -366,16 +326,16 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ── APPLIED ── */}
         {activeTab === "applied" && (
-          <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
-            <FileText className="w-10 h-10 mx-auto mb-3 text-gray-200" />
-            <p className="font-semibold text-gray-500 mb-1" style={{ fontFamily: DISPLAY }}>No applications yet</p>
-            <p className="text-sm text-gray-400">Application tracking is coming soon!</p>
+          <div className="rounded-xl border border-border bg-card p-12 text-center">
+            <FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
+            <p className="mb-1 font-display font-semibold text-foreground">No applications yet</p>
+            <p className="text-sm text-muted-foreground">Application tracking is coming soon!</p>
           </div>
         )}
-
       </main>
+
+      <Footer />
     </div>
   );
 }

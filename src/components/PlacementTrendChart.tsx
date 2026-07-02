@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import type { College } from "@/data/colleges";
+import type { College } from "@/types/college";
 
 // Generate realistic placement trend data based on actual avg package
 // Uses a seeded approach so the same college always gets the same chart

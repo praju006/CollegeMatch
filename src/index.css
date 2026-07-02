@@ -4,84 +4,87 @@
 @tailwind components;
 @tailwind utilities;
 
-/* 
+/*
  * Design System for College Recommendation Platform
- * Theme: Professional, Educational, Trustworthy
- * Primary: Deep Navy (trust, education)
- * Accent: Teal/Emerald (growth, success)
+ * Theme: White / Black / Blue — clean, high-contrast, monochrome-first.
+ * Blue is the ONLY brand accent color (nav, links, primary actions, hero gradient).
+ * Near-black for text and dramatic dark surfaces. Pure white for backgrounds/cards.
+ * Green/red are reserved strictly for functional states (success/error) — never decorative.
+ * Star ratings use a literal amber utility class (not a design token) since a colored
+ * star is a near-universal convention independent of brand color.
  */
 
 @layer base {
 :root {
   /* Backgrounds */
-  --background: 210 40% 98%;          /* Soft white */
-  --foreground: 222 47% 11%;          /* Dark text */
+  --background: 0 0% 100%;            /* Pure white */
+  --foreground: 222 30% 9%;           /* Near-black */
 
   /* Cards */
-  --card: 210 40% 100%;               /* Pure white */
-  --card-foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 30% 9%;
 
-  --popover: 210 40% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 30% 9%;
 
-  /* PRIMARY – Blue */
-  --primary: 218 70% 38%;             /* Modern blue */
+  /* PRIMARY – Blue (the one brand accent) */
+  --primary: 217 91% 45%;
   --primary-foreground: 0 0% 100%;
 
-  /* SECONDARY – Light Blue */
-  --secondary: 210 60% 94%;
-  --secondary-foreground: 218 60% 30%;
+  /* SECONDARY – Light blue-gray surface */
+  --secondary: 217 30% 95%;
+  --secondary-foreground: 217 60% 25%;
 
   /* MUTED */
-  --muted: 210 40% 95%;
-  --muted-foreground: 215 16% 40%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 15% 40%;
 
-  /* ACCENT – Yellow */
-  --accent: 45 95% 55%;
-  --accent-foreground: 222 47% 11%;
+  /* ACCENT – Light blue tint, for hover/highlight backgrounds only */
+  --accent: 217 70% 95%;
+  --accent-foreground: 222 30% 9%;
 
-  /* SUCCESS – Green */
-  --success: 150 60% 40%;
+  /* SUCCESS – Green (functional: positive data only) */
+  --success: 152 55% 36%;
   --success-foreground: 0 0% 100%;
 
-  /* WARNING – Soft Yellow */
-  --warning: 45 90% 50%;
-  --warning-foreground: 222 47% 11%;
+  /* WARNING – Amber (functional only) */
+  --warning: 42 90% 50%;
+  --warning-foreground: 222 30% 9%;
 
   /* Destructive */
-  --destructive: 0 72% 51%;
+  --destructive: 0 70% 50%;
   --destructive-foreground: 0 0% 100%;
 
   /* Borders */
-  --border: 210 30% 88%;
-  --input: 210 30% 88%;
-  --ring: 218 70% 38%;
+  --border: 217 20% 89%;
+  --input: 217 20% 89%;
+  --ring: 217 91% 45%;
 
-  --radius: 0.75rem;
+  --radius: 0.625rem;
 
-  /* Gradients */
+  /* Gradients — reserved for hero banners only, not buttons/badges. Black to blue. */
   --gradient-hero: linear-gradient(
     135deg,
-    hsl(218 70% 38%) 0%,
-    hsl(210 70% 45%) 50%,
-    hsl(45 95% 55%) 100%
+    hsl(222 47% 6%) 0%,
+    hsl(221 75% 22%) 55%,
+    hsl(217 91% 45%) 100%
   );
 
   --gradient-card: linear-gradient(
     180deg,
-    hsl(210 40% 100%) 0%,
-    hsl(210 40% 96%) 100%
+    hsl(0 0% 100%) 0%,
+    hsl(210 20% 97%) 100%
   );
 
   --gradient-accent: linear-gradient(
     135deg,
-    hsl(45 95% 55%) 0%,
-    hsl(40 95% 50%) 100%
+    hsl(217 91% 45%) 0%,
+    hsl(221 75% 35%) 100%
   );
 
   /* Shadows */
-  --shadow-card: 0 4px 12px hsl(210 40% 30% / 0.08);
-  --shadow-card-hover: 0 12px 30px hsl(210 40% 30% / 0.15);
+  --shadow-card: 0 4px 12px hsl(222 30% 10% / 0.06);
+  --shadow-card-hover: 0 12px 30px hsl(222 30% 10% / 0.12);
 }
 
 
@@ -252,17 +255,12 @@
   }
 @keyframes floatSlow {
   0% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  50% { transform: translateY(-12px); }
   100% { transform: translateY(0px); }
 }
 
 .animate-float {
   animation: floatSlow 12s ease-in-out infinite;
-}
-@keyframes floatSlow {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-12px); }
-  100% { transform: translateY(0px); }
 }
 
 @keyframes floatFast {
