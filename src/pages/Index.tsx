@@ -74,7 +74,7 @@ export default function Index() {
           </div>
 
           <div className="fade-up-4 mt-16 flex flex-wrap justify-center gap-10 text-white/40 text-xs font-semibold tracking-widest uppercase">
-            {[{value:"60+",label:"Colleges"},{value:"16+",label:"Cities"},{value:"100%",label:"Free"},{value:"AI",label:"Powered"}].map(({value,label}) => (
+            {[{value:"53+",label:"Colleges"},{value:"16+",label:"Cities"},{value:"100%",label:"Free"},{value:"AI",label:"Powered"}].map(({value,label}) => (
               <div key={label} className="text-center">
                 <p className="stat-num text-white mb-0.5" style={{ fontSize:"2rem", fontWeight:700, lineHeight:1 }}>{value}</p>
                 <p>{label}</p>
